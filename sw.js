@@ -1,4 +1,4 @@
-const CACHE_NAME = 'juchu-app-v1';
+const CACHE_NAME = 'juchu-app-v2';
 const ASSETS = [
   './受注表_スマホ版_オフライン版.html',
   './manifest.json',
@@ -21,15 +21,14 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// ネットワークが使える時は常に最新版を取りに行き、取れた分をキャッシュに保存する。
+// 電波が無い時だけ、直近にキャッシュした版を表示する（オフラインでも起動できるようにするため）。
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((res) => {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        return res;
-      }).catch(() => cached);
-    })
+    fetch(event.request).then((res) => {
+      const clone = res.clone();
+      caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+      return res;
+    }).catch(() => caches.match(event.request))
   );
 });
