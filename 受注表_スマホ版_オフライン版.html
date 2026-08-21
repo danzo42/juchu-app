@@ -1694,19 +1694,11 @@ function startDictation(btn) {
     btn.classList.add('listening');
 
     recognition.onresult = (e) => {
-        let text = e.results[0][0].transcript;
+        const text = e.results[0][0].transcript;
 
-        // 品名リストに近い表記があれば、登録済みの正式な品名へ自動補正
-        // （音声認識特有の表記ゆれ：長音のずれ、小さい「ッ」等が普通サイズになる、等を吸収）
-        const nText = kanaNormalize(text);
-        const threshold = Math.max(1, Math.ceil(nText.length * 0.25));
-        let best = null, bestDist = Infinity;
-        for (const name of HINMOKU_LIST) {
-            const d = levenshtein(nText, kanaNormalize(name));
-            if (d < bestDist) { bestDist = d; best = name; }
-        }
-        if (best && bestDist <= threshold) text = best;
-
+        // 認識結果はそのまま入力し、正式な品名の選択は候補リストのタップに任せる。
+        // （登録名は「ﾁｯﾊﾟｰ ﾉﾐ別途」のように装備・規格まで含む長い表記で、
+        //   話し言葉「チッパー」から一意には決められないため。候補は下に全て表示される）
         const current = input.value.trim();
         input.value = current ? `${current} ${text}` : text;
         input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1748,7 +1740,9 @@ document.addEventListener('click', (e) => {
 // ═══════════════════════════════════════
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
+        navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((reg) => {
+            reg.update().catch(() => {});
+        }).catch(() => {});
     });
 }
 
