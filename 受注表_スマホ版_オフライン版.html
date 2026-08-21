@@ -1494,6 +1494,71 @@ function acEscape(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ─── かな表記ゆれ吸収（半角/全角カタカナ・ひらがな↔カタカナ・長音・小さい文字・記号・空白の差を無視して比較するための正規化）───
+// ※ 品名リストの多くが半角カタカナ登録の一方、音声認識は全角カタカナで返すため、この変換が実質的なキモ
+const HALFWIDTH_KANA_MAP = {
+    'ｶﾞ':'ガ','ｷﾞ':'ギ','ｸﾞ':'グ','ｹﾞ':'ゲ','ｺﾞ':'ゴ',
+    'ｻﾞ':'ザ','ｼﾞ':'ジ','ｽﾞ':'ズ','ｾﾞ':'ゼ','ｿﾞ':'ゾ',
+    'ﾀﾞ':'ダ','ﾁﾞ':'ヂ','ﾂﾞ':'ヅ','ﾃﾞ':'デ','ﾄﾞ':'ド',
+    'ﾊﾞ':'バ','ﾋﾞ':'ビ','ﾌﾞ':'ブ','ﾍﾞ':'ベ','ﾎﾞ':'ボ',
+    'ｳﾞ':'ヴ','ﾊﾟ':'パ','ﾋﾟ':'ピ','ﾌﾟ':'プ','ﾍﾟ':'ペ','ﾎﾟ':'ポ',
+    'ｦ':'ヲ','ｧ':'ァ','ｨ':'ィ','ｩ':'ゥ','ｪ':'ェ','ｫ':'ォ','ｬ':'ャ','ｭ':'ュ','ｮ':'ョ','ｯ':'ッ','ｰ':'ー',
+    'ｱ':'ア','ｲ':'イ','ｳ':'ウ','ｴ':'エ','ｵ':'オ',
+    'ｶ':'カ','ｷ':'キ','ｸ':'ク','ｹ':'ケ','ｺ':'コ',
+    'ｻ':'サ','ｼ':'シ','ｽ':'ス','ｾ':'セ','ｿ':'ソ',
+    'ﾀ':'タ','ﾁ':'チ','ﾂ':'ツ','ﾃ':'テ','ﾄ':'ト',
+    'ﾅ':'ナ','ﾆ':'ニ','ﾇ':'ヌ','ﾈ':'ネ','ﾉ':'ノ',
+    'ﾊ':'ハ','ﾋ':'ヒ','ﾌ':'フ','ﾍ':'ヘ','ﾎ':'ホ',
+    'ﾏ':'マ','ﾐ':'ミ','ﾑ':'ム','ﾒ':'メ','ﾓ':'モ',
+    'ﾔ':'ヤ','ﾕ':'ユ','ﾖ':'ヨ',
+    'ﾗ':'ラ','ﾘ':'リ','ﾙ':'ル','ﾚ':'レ','ﾛ':'ロ',
+    'ﾜ':'ワ','ﾝ':'ン'
+};
+function halfwidthKanaToFullwidth(s) {
+    return s.replace(/[ｦ-ﾟ][ﾞﾟ]?/g, m => HALFWIDTH_KANA_MAP[m] || HALFWIDTH_KANA_MAP[m[0]] || m);
+}
+const SMALL_KANA_MAP = { 'ァ':'ア','ィ':'イ','ゥ':'ウ','ェ':'エ','ォ':'オ','ッ':'ツ','ャ':'ヤ','ュ':'ユ','ョ':'ヨ','ヵ':'カ','ヶ':'ケ' };
+function kanaNormalize(s) {
+    if (!s) return '';
+    return halfwidthKanaToFullwidth(s)
+        .replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60)) // ひらがな→カタカナ
+        .replace(/[ァィゥェォッャュョヵヶ]/g, c => SMALL_KANA_MAP[c])              // 小さい文字→通常サイズ
+        .replace(/ー/g, '')                                                     // 長音記号を除去
+        .replace(/[\s　・\-－]/g, '')                                            // 空白・中点・ハイフン除去
+        .toUpperCase();
+}
+// ─── レーベンシュタイン距離（2つの文字列がどれくらい近いか）───
+function levenshtein(a, b) {
+    const m = a.length, n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    let prev = Array.from({length: n + 1}, (_, i) => i);
+    for (let i = 1; i <= m; i++) {
+        const cur = [i];
+        for (let j = 1; j <= n; j++) {
+            cur[j] = a[i-1] === b[j-1]
+                ? prev[j-1]
+                : 1 + Math.min(prev[j-1], prev[j], cur[j-1]);
+        }
+        prev = cur;
+    }
+    return prev[n];
+}
+// クエリに近い品名を近似度順で返す（表記ゆれ・音声認識の誤差を吸収）
+function fuzzyMatchHinmoku(query, limit) {
+    const nq = kanaNormalize(query);
+    if (!nq) return [];
+    const threshold = Math.max(1, Math.ceil(nq.length * 0.3));
+    const scored = [];
+    for (const name of HINMOKU_LIST) {
+        const nn = kanaNormalize(name);
+        const dist = (nn.includes(nq) || nq.includes(nn)) ? 0 : levenshtein(nq, nn);
+        if (dist <= threshold) scored.push({ name, dist });
+    }
+    scored.sort((a, b) => a.dist - b.dist);
+    return scored.slice(0, limit).map(s => s.name);
+}
+
 function ensureAcBox() {
     if (acBox) return acBox;
     acBox = document.createElement('div');
@@ -1542,6 +1607,10 @@ function showHinmokuSuggest(input) {
         acMatches = HINMOKU_LIST.slice(0, 30);
     } else {
         acMatches = HINMOKU_LIST.filter(n => n.toLowerCase().includes(q)).slice(0, 30);
+        // 完全一致する候補が無ければ、表記ゆれ・音声認識の誤差を許容したあいまい検索にフォールバック
+        if (acMatches.length === 0) {
+            acMatches = fuzzyMatchHinmoku(input.value.trim(), 30);
+        }
     }
 
     if (acMatches.length === 0) {
@@ -1625,7 +1694,19 @@ function startDictation(btn) {
     btn.classList.add('listening');
 
     recognition.onresult = (e) => {
-        const text = e.results[0][0].transcript;
+        let text = e.results[0][0].transcript;
+
+        // 品名リストに近い表記があれば、登録済みの正式な品名へ自動補正
+        // （音声認識特有の表記ゆれ：長音のずれ、小さい「ッ」等が普通サイズになる、等を吸収）
+        const nText = kanaNormalize(text);
+        const threshold = Math.max(1, Math.ceil(nText.length * 0.25));
+        let best = null, bestDist = Infinity;
+        for (const name of HINMOKU_LIST) {
+            const d = levenshtein(nText, kanaNormalize(name));
+            if (d < bestDist) { bestDist = d; best = name; }
+        }
+        if (best && bestDist <= threshold) text = best;
+
         const current = input.value.trim();
         input.value = current ? `${current} ${text}` : text;
         input.dispatchEvent(new Event('input', { bubbles: true }));
