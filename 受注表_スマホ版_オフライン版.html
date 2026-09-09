@@ -679,9 +679,12 @@
                 </div>
             </div>
             <div class="checkbox-grid col3" style="margin-top:8px;">
+                <label class="checkbox-item"><input type="checkbox" id="idou-load-hisshu"> 必着</label>
+                <label class="checkbox-item"><input type="checkbox" id="idou-load-kyo"> 今日中</label>
                 <label class="checkbox-item"><input type="checkbox" id="idou-load-am"> AM中</label>
                 <label class="checkbox-item"><input type="checkbox" id="idou-load-pm"> PM中</label>
                 <label class="checkbox-item"><input type="checkbox" id="idou-load-koro"> 頃</label>
+                <label class="checkbox-item"><input type="checkbox" id="idou-load-mitei"> 未定</label>
             </div>
         </div>
         <div class="divider"></div>
@@ -697,9 +700,12 @@
                 </div>
             </div>
             <div class="checkbox-grid col3" style="margin-top:8px;">
+                <label class="checkbox-item"><input type="checkbox" id="idou-arr-hisshu"> 必着</label>
+                <label class="checkbox-item"><input type="checkbox" id="idou-arr-kyo"> 今日中</label>
                 <label class="checkbox-item"><input type="checkbox" id="idou-arr-am"> AM中</label>
                 <label class="checkbox-item"><input type="checkbox" id="idou-arr-pm"> PM中</label>
-                <label class="checkbox-item"><input type="checkbox" id="idou-arr-hisshu"> 必着</label>
+                <label class="checkbox-item"><input type="checkbox" id="idou-arr-koro"> 頃</label>
+                <label class="checkbox-item"><input type="checkbox" id="idou-arr-mitei"> 未定</label>
             </div>
         </div>
     </div>
@@ -1325,6 +1331,17 @@ function showToast(msg) {
 // ═══════════════════════════════════════
 //  フォームデータ収集
 // ═══════════════════════════════════════
+// 移動の積込／到着は同じ項目立てなので、接頭辞を渡してまとめて読み取る
+function idouTimeData(prefix) {
+    const on = (suffix) => !!document.getElementById(`${prefix}-${suffix}`)?.checked;
+    return {
+        date: fmtDate(`${prefix}-date`),
+        hour: v(`${prefix}-hour`), min: v(`${prefix}-min`),
+        hisshu: on('hisshu'), kyo: on('kyo'), am: on('am'),
+        pm: on('pm'), koro: on('koro'), mitei: on('mitei'),
+    };
+}
+
 function collectFormData() {
     const type = document.getElementById('field-type').value;
     const isIdou    = type === '移動';
@@ -1377,20 +1394,8 @@ function collectFormData() {
     return {
         type, typeJuchu, typeIrai, allKubun,
         isIdou, idouFrom, idouTo, idouVia, idouRoute,
-        idouLoad: {
-            date: fmtDate('idou-load-date'),
-            hour: v('idou-load-hour'), min: v('idou-load-min'),
-            am: !!document.getElementById('idou-load-am')?.checked,
-            pm: !!document.getElementById('idou-load-pm')?.checked,
-            koro: !!document.getElementById('idou-load-koro')?.checked,
-        },
-        idouArr: {
-            date: fmtDate('idou-arr-date'),
-            hour: v('idou-arr-hour'), min: v('idou-arr-min'),
-            am: !!document.getElementById('idou-arr-am')?.checked,
-            pm: !!document.getElementById('idou-arr-pm')?.checked,
-            hisshu: !!document.getElementById('idou-arr-hisshu')?.checked,
-        },
+        idouLoad: idouTimeData('idou-load'),
+        idouArr:  idouTimeData('idou-arr'),
         rcvYear: v('rcv-year'), rcvMonth: v('rcv-month'), rcvDay: v('rcv-day'),
         rcvHour: v('rcv-hour'), rcvMin: v('rcv-min'),
         tokuisaki: v('field-tokuisaki'), hachusha: v('field-hachusha'),
@@ -1452,10 +1457,13 @@ function buildKeijoHTML(d) {
     // 移動のときは、現行の帳票様式のまま該当欄に営業所と積込／到着を入れる。
     // 欄名（得意先名・現場名）と中身が違うため、角括弧で何の情報かを明示する。
     const idouTime = (t) => {
-        const flags = [t.am && 'AM中', t.pm && 'PM中', t.koro && '頃', t.hisshu && '必着']
-                        .filter(Boolean).join(' ');
-        const hm = t.hour ? `${t.hour}:${(t.min || '0').padStart(2, '0')}` : '';
-        return [t.date, hm, flags].filter(Boolean).join(' ');
+        const hm = t.hour ? `${t.hour}:${String(t.min || '0').padStart(2, '0')}` : '';
+        // 日付が未定のときは日付欄に（未定）と出し、確定日かどうかを一目で分かるようにする
+        const base = [t.date, hm].filter(Boolean).join(' ');
+        const head = t.mitei ? `${base}（未定）`.trim() : base;
+        const flags = [t.hisshu && '必着', t.kyo && '今日中', t.am && 'AM中',
+                       t.pm && 'PM中', t.koro && '頃'].filter(Boolean).join(' ');
+        return [head, flags].filter(Boolean).join('　');
     };
     const idouLoadStr = d.isIdou ? idouTime(d.idouLoad) : '';
     const idouArrStr  = d.isIdou ? idouTime(d.idouArr)  : '';
