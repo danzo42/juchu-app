@@ -1460,14 +1460,16 @@ function buildKeijoHTML(d) {
 
     // 移動のときは、現行の帳票様式のまま該当欄に営業所と積込／到着を入れる。
     // 欄名（得意先名・現場名）と中身が違うため、角括弧で何の情報かを明示する。
+    // 「AM中」などが行の途中で分断されないよう、項目ごとに折り返しを禁止する
+    const nw = s => `<span style="white-space:nowrap;">${s}</span>`;
     const idouTime = (t) => {
-        const hm = t.hour ? `${t.hour}:${String(t.min || '0').padStart(2, '0')}` : '';
+        const hm = t.hour ? `${esc(t.hour)}:${String(t.min || '0').padStart(2, '0')}` : '';
         // 日付が未定のときは日付欄に（未定）と出し、確定日かどうかを一目で分かるようにする
-        const base = [t.date, hm].filter(Boolean).join(' ');
+        const base = [esc(t.date), hm].filter(Boolean).join(' ');
         const head = t.mitei ? `${base}（未定）`.trim() : base;
         const flags = [t.hisshu && '必着', t.kyo && '今日中', t.am && 'AM中',
-                       t.pm && 'PM中', t.koro && '頃'].filter(Boolean).join(' ');
-        return [head, flags].filter(Boolean).join('　');
+                       t.pm && 'PM中', t.koro && '頃'].filter(Boolean).map(nw).join(' ');
+        return [head ? nw(head) : '', flags].filter(Boolean).join('　');
     };
     const idouLoadStr = d.isIdou ? idouTime(d.idouLoad) : '';
     const idouArrStr  = d.isIdou ? idouTime(d.idouArr)  : '';
@@ -1478,12 +1480,12 @@ function buildKeijoHTML(d) {
         : (d.shipMitei ? '' : '');
     const shipStr = [
         d.shipMitei ? `${shipDateStr || ''}（未定）`.trim() : shipDateStr,
-        d.shipHour  ? `${d.shipHour} 時 ${d.shipMin||'0'} 分` : '',
+        d.shipHour  ? `${esc(d.shipHour)} 時 ${esc(d.shipMin||'0')} 分` : '',
         `${chk(d.hisshu)}必着`,
         `${chk(d.kyochu)}今日中`,
         `${chk(d.amChu)}AM中`,
         `${chk(d.pmChu)}PM中`,
-    ].filter(Boolean).join('　');
+    ].filter(Boolean).map(nw).join('　');
 
     // 明細は6件ごとにページ分割（7品目目から2ページ目…）
     const ROWS_PER_PAGE = 6;
@@ -1495,11 +1497,11 @@ function buildKeijoHTML(d) {
         let rows = '';
         for (let r = 0; r < ROWS_PER_PAGE; r++) {
             const it = items[pageIdx * ROWS_PER_PAGE + r] || {};
-            rows += `<tr style="height:44px;">
-                <td style="border:1px solid ${G};padding:1px 3px;font-size:11px;">${esc(it.kanri)}</td>
-                <td style="border:1px solid ${G};padding:1px 3px;font-size:11px;">${esc(it.hinmoku)}</td>
-                <td style="border:1px solid ${G};padding:1px 3px;font-size:11px;text-align:center;">${esc(it.suryo)}</td>
-                <td style="border:1px solid ${G};padding:1px 3px;font-size:11px;text-align:center;">${esc(it.shutsuei)}</td>
+            rows += `<tr style="height:43px;">
+                <td style="border:1px solid ${G};padding:1px 3px;font-size:13.5px;">${esc(it.kanri)}</td>
+                <td style="border:1px solid ${G};padding:1px 3px;font-size:13.5px;line-height:1.25;">${esc(it.hinmoku)}</td>
+                <td style="border:1px solid ${G};padding:1px 3px;font-size:13.5px;text-align:center;">${esc(it.suryo)}</td>
+                <td style="border:1px solid ${G};padding:1px 3px;font-size:13.5px;text-align:center;">${esc(it.shutsuei)}</td>
                 <td style="border:1px solid ${G};padding:1px 3px;font-size:11px;">${esc(it.tekiyo)}</td>
                 <td style="border:1px solid ${G};padding:1px 3px;font-size:11px;">${esc(it.denpyo)}</td>
             </tr>`;
@@ -1575,7 +1577,7 @@ function buildKeijoHTML(d) {
   <!-- 明細 -->
   <table style="margin-bottom:2px;">
     <thead>
-      <tr style="background:${BG};font-size:10px;text-align:center;">
+      <tr style="background:${BG};font-size:11.5px;text-align:center;">
         <th style="border:1px solid ${G};padding:2px;width:13%;">管理番号</th>
         <th style="border:1px solid ${G};padding:2px;width:37%;">品目（メーカー・品名・規格）</th>
         <th style="border:1px solid ${G};padding:2px;width:8%;">数量</th>
