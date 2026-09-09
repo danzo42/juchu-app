@@ -1691,6 +1691,11 @@ function showPreview() {
 
     const data = collectFormData();
     const frame = document.getElementById('preview-frame');
+    // 前回表示したときの幅・高さ・拡大率が残っていると縮小率を計算し直せないため、毎回リセットする
+    frame.style.width = '';
+    frame.style.height = '';
+    frame.style.overflow = '';
+    frame.style.transform = '';
     frame.innerHTML = buildKeijoHTML(data);
 
     document.getElementById('preview-modal').classList.add('show');
@@ -1701,7 +1706,10 @@ function showPreview() {
         const body  = document.getElementById('preview-body');
         const avail = body.clientWidth;
         const pageEl = frame.querySelector('.keijo-pages');
-        const nW = pageEl.offsetWidth, nH = pageEl.offsetHeight;
+        // 幅は帳票1ページ(210mm)の実寸を基準にする。包む要素の幅は表示状態に左右されるため使わない
+        const onePage = frame.querySelector('.keijo-page');
+        const nW = (onePage ? onePage.offsetWidth : pageEl.offsetWidth) || 794;
+        const nH = pageEl.offsetHeight;
         const scale = Math.min(1, avail / nW);
         pageEl.style.transformOrigin = 'top left';
         pageEl.style.transform = `scale(${scale})`;
@@ -1717,7 +1725,13 @@ function showPreview() {
 
 function closePreview() {
     document.getElementById('preview-modal').classList.remove('show');
-    document.getElementById('preview-frame').innerHTML = '';
+    const frame = document.getElementById('preview-frame');
+    frame.innerHTML = '';
+    // 次回開いたときに前回の表示状態が残らないようにする
+    frame.style.width = '';
+    frame.style.height = '';
+    frame.style.overflow = '';
+    frame.style.transform = '';
     document.body.style.overflow = '';
 }
 
