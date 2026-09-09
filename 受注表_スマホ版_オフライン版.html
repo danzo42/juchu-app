@@ -203,7 +203,7 @@
         /* 種別（大きいトグル） */
         .type-toggle {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 8px;
             margin-bottom: 0;
         }
@@ -261,6 +261,77 @@
             background: var(--green-light);
             color: var(--green-dark);
         }
+        /* 移動は受注票・依頼書とは別種の伝票のため、色を変えて取り違えを防ぐ */
+        .type-btn.move.active {
+            border-color: #b45309;
+            background: #fef3c7;
+            color: #7c3a06;
+        }
+
+        /* ─── 移動区間（出発→中継→到着） ─── */
+        .route {
+            position: relative;
+            padding-left: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .route::before {
+            content: "";
+            position: absolute;
+            left: 6px; top: 14px; bottom: 14px;
+            width: 2px; border-radius: 2px;
+            background: linear-gradient(var(--green), #b45309);
+        }
+        .route .stop { position: relative; }
+        .route .stop::before {
+            content: "";
+            position: absolute;
+            left: -24px; top: 22px;
+            width: 14px; height: 14px; border-radius: 50%;
+            background: var(--white); border: 3px solid var(--green);
+        }
+        .route .stop.via::before { border-color: #b45309; width: 11px; height: 11px; left: -22.5px; top: 24px; }
+        .route .stop.end::before { border-color: #b45309; }
+        .route .stop-head {
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .via-del {
+            border: none; background: transparent; color: var(--red);
+            font: inherit; font-size: 12px; cursor: pointer; padding: 2px 6px;
+        }
+        .add-via-btn {
+            width: 100%;
+            margin-top: 10px;
+            padding: 11px;
+            border: 1.5px dashed #b45309;
+            border-radius: 8px;
+            background: #fef3c7;
+            color: #7c3a06;
+            font-size: 14px;
+            font-weight: bold;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .add-via-btn:active { background: #fde68a; }
+        select.fld-select {
+            width: 100%;
+            padding: 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            background: #fafafa;
+            color: #111;
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0h10L5 6z' fill='%236b7280'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 30px;
+            min-height: 48px;
+        }
+        select.fld-select:focus { outline: none; border-color: var(--green); background-color: #f0fdf4; }
 
         /* ─── 明細テーブル ─── */
         .meisai-item {
@@ -509,7 +580,7 @@
 <div class="header">
     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
         <div>
-            <h1>📋 受注票 入力フォーム</h1>
+            <h1 id="header-title">📋 受注票 入力フォーム</h1>
             <div class="company">株式会社 ヨシカワ</div>
         </div>
         <div class="datetime" id="header-datetime"></div>
@@ -531,14 +602,15 @@
         <div class="type-toggle">
             <button class="type-btn active" id="btn-juchu" onclick="toggleType('受注票')">受注票</button>
             <button class="type-btn" id="btn-irai" onclick="toggleType('依頼書')">依頼書</button>
+            <button class="type-btn move" id="btn-idou" onclick="toggleType('移動')">移動</button>
         </div>
-        <div class="type-hint">※ 両方に該当する場合は両方を選択できます</div>
+        <div class="type-hint" id="type-hint">※ 両方に該当する場合は両方を選択できます</div>
         <input type="hidden" id="field-type" value="受注票">
     </div>
 </div>
 
 <!-- ② 区分チェック -->
-<div class="card">
+<div class="card" id="card-kubun">
     <div class="card-header"><span class="icon">🚚</span>区分</div>
     <div class="card-body">
         <div class="checkbox-grid col3">
@@ -572,8 +644,69 @@
     </div>
 </div>
 
+<!-- ④-2 移動区間（書類種別で「移動」を選んだときだけ表示） -->
+<div class="card" id="card-idou-kukan" hidden>
+    <div class="card-header"><span class="icon">🚚</span>移動区間</div>
+    <div class="card-body">
+        <div class="route" id="idou-route">
+            <div class="stop">
+                <label>出発営業所 *</label>
+                <select class="fld-select" id="idou-from"></select>
+            </div>
+            <div id="idou-via-slot"></div>
+            <div class="stop end">
+                <label>到着営業所 *</label>
+                <select class="fld-select" id="idou-to"></select>
+            </div>
+        </div>
+        <button type="button" class="add-via-btn" onclick="addVia()">＋ 中継営業所を追加</button>
+    </div>
+</div>
+
+<!-- ⑤-2 積込・到着（移動用の日程） -->
+<div class="card" id="card-idou-nittei" hidden>
+    <div class="card-header"><span class="icon">📅</span>積込・到着</div>
+    <div class="card-body">
+        <div class="field">
+            <label>積込日（出発）</label>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <input type="date" id="idou-load-date" style="flex:1; min-width:160px;">
+                <div class="date-row" style="flex-shrink:0;">
+                    <input type="text" id="idou-load-hour" style="width:52px" inputmode="numeric" placeholder="時">
+                    <span>時</span>
+                    <input type="text" id="idou-load-min" style="width:52px" inputmode="numeric" placeholder="分">
+                    <span>分</span>
+                </div>
+            </div>
+            <div class="checkbox-grid col3" style="margin-top:8px;">
+                <label class="checkbox-item"><input type="checkbox" id="idou-load-am"> AM中</label>
+                <label class="checkbox-item"><input type="checkbox" id="idou-load-pm"> PM中</label>
+                <label class="checkbox-item"><input type="checkbox" id="idou-load-koro"> 頃</label>
+            </div>
+        </div>
+        <div class="divider"></div>
+        <div class="field">
+            <label>到着日</label>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <input type="date" id="idou-arr-date" style="flex:1; min-width:160px;">
+                <div class="date-row" style="flex-shrink:0;">
+                    <input type="text" id="idou-arr-hour" style="width:52px" inputmode="numeric" placeholder="時">
+                    <span>時</span>
+                    <input type="text" id="idou-arr-min" style="width:52px" inputmode="numeric" placeholder="分">
+                    <span>分</span>
+                </div>
+            </div>
+            <div class="checkbox-grid col3" style="margin-top:8px;">
+                <label class="checkbox-item"><input type="checkbox" id="idou-arr-am"> AM中</label>
+                <label class="checkbox-item"><input type="checkbox" id="idou-arr-pm"> PM中</label>
+                <label class="checkbox-item"><input type="checkbox" id="idou-arr-hisshu"> 必着</label>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ④ 顧客・現場情報 -->
-<div class="card">
+<div class="card" id="card-kokyaku">
     <div class="card-header"><span class="icon">🏢</span>顧客・現場情報</div>
     <div class="card-body">
         <div class="field">
@@ -621,7 +754,7 @@
 </div>
 
 <!-- ⑤ 日程情報 -->
-<div class="card">
+<div class="card" id="card-nittei">
     <div class="card-header"><span class="icon">📅</span>日程情報</div>
     <div class="card-body">
         <div class="field">
@@ -890,27 +1023,143 @@ function fillCurrentDateTime() {
 // ═══════════════════════════════════════
 //  書類種別トグル
 // ═══════════════════════════════════════
-// 受注票・依頼書はそれぞれ独立してON/OFFできる（両方に該当する案件があるため）。
-// 保存形式は従来どおり field-type の文字列で、複数選択時は「受注票,依頼書」となる。
-function toggleType(type) {
-    const btn = type === '受注票' ? document.getElementById('btn-juchu')
-                                  : document.getElementById('btn-irai');
-    btn.classList.toggle('active');
+// ═══════════════════════════════════════
+//  書類種別（受注票／依頼書／移動）
+//  受注票と依頼書は両方に該当する案件があるため同時選択できる。
+//  移動は営業所間の別種の伝票なので、受注票・依頼書とは同時に選べない。
+// ═══════════════════════════════════════
+function isIdouMode() {
+    return document.getElementById('btn-idou').classList.contains('active');
+}
 
-    // どちらも未選択になる状態は避け、押した方を必ず有効にする
-    const juchu = document.getElementById('btn-juchu').classList.contains('active');
-    const irai  = document.getElementById('btn-irai').classList.contains('active');
-    if (!juchu && !irai) btn.classList.add('active');
+function toggleType(type) {
+    const juchuBtn = document.getElementById('btn-juchu');
+    const iraiBtn  = document.getElementById('btn-irai');
+    const idouBtn  = document.getElementById('btn-idou');
+
+    if (type === '移動') {
+        if (idouBtn.classList.contains('active')) {
+            // 移動を解除したら通常の受注票に戻す（種別が空になるのを防ぐ）
+            idouBtn.classList.remove('active');
+            juchuBtn.classList.add('active');
+        } else {
+            idouBtn.classList.add('active');
+            juchuBtn.classList.remove('active');
+            iraiBtn.classList.remove('active');
+        }
+    } else {
+        const btn = type === '受注票' ? juchuBtn : iraiBtn;
+        idouBtn.classList.remove('active');
+        btn.classList.toggle('active');
+        // どちらも未選択になる状態は避け、押した方を必ず有効にする
+        if (!juchuBtn.classList.contains('active') && !iraiBtn.classList.contains('active')) {
+            btn.classList.add('active');
+        }
+    }
 
     syncTypeField();
+    applyModeVisibility();
 }
 
 function syncTypeField() {
     const types = [];
-    if (document.getElementById('btn-juchu').classList.contains('active')) types.push('受注票');
-    if (document.getElementById('btn-irai').classList.contains('active'))  types.push('依頼書');
+    if (isIdouMode()) {
+        types.push('移動');
+    } else {
+        if (document.getElementById('btn-juchu').classList.contains('active')) types.push('受注票');
+        if (document.getElementById('btn-irai').classList.contains('active'))  types.push('依頼書');
+    }
     document.getElementById('field-type').value = types.join(',');
 }
+
+// 移動モードでは客先・現場・区分を出さず、代わりに移動区間と積込／到着を表示する
+function applyModeVisibility() {
+    const idou = isIdouMode();
+    const show = (id, visible) => {
+        const el = document.getElementById(id);
+        if (el) el.hidden = !visible;
+    };
+    show('card-kubun',       !idou);
+    show('card-kokyaku',     !idou);
+    show('card-nittei',      !idou);
+    show('card-idou-kukan',   idou);
+    show('card-idou-nittei',  idou);
+
+    const hint = document.getElementById('type-hint');
+    if (hint) {
+        hint.textContent = idou
+            ? '※ 営業所間の移動用です。客先・現場の入力は不要です'
+            : '※ 両方に該当する場合は両方を選択できます';
+    }
+
+    // 今どちらの伝票を作っているのかが常に分かるよう、見出しも切り替える
+    const title = document.getElementById('header-title');
+    if (title) title.textContent = idou ? '🚚 移動 入力フォーム' : '📋 受注票 入力フォーム';
+}
+
+// ═══════════════════════════════════════
+//  営業所一覧（探しやすいようエリアごとに区切って表示）
+// ═══════════════════════════════════════
+const EIGYOSHO_AREAS = [
+    ['石川',     ['湊','金沢南','松任','金沢中央','小松','加賀','寺井','志賀']],
+    ['富山',     ['富山','富山中央','飛騨','立山','入善','射水','砺波','福光','高岡','小矢部']],
+    ['福井',     ['福井','坂井','大野','武生東','敦賀']],
+    ['新潟',     ['糸魚川','長岡','新潟出張所','新潟西','新潟北部']],
+    ['東海',     ['春日井','名古屋','中津川','静岡','浜松','富士']],
+    ['センター', ['石川センター','石川第2センター','特機センター','武生センター']]
+];
+
+function fillEigyoshoSelect(sel, placeholder) {
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = placeholder;
+    sel.appendChild(blank);
+    EIGYOSHO_AREAS.forEach(([area, names]) => {
+        const g = document.createElement('optgroup');
+        g.label = area;
+        names.forEach(n => {
+            const o = document.createElement('option');
+            o.value = n;
+            o.textContent = n;
+            g.appendChild(o);
+        });
+        sel.appendChild(g);
+    });
+}
+
+let viaCount = 0;
+
+function addVia() {
+    viaCount++;
+    const n = viaCount;
+    const slot = document.getElementById('idou-via-slot');
+    const div = document.createElement('div');
+    div.className = 'stop via';
+    div.id = `idou-via-${n}`;
+    div.innerHTML = `
+        <div class="stop-head">
+            <label>中継営業所</label>
+            <button type="button" class="via-del" onclick="removeVia(${n})">削除</button>
+        </div>
+        <select class="fld-select idou-via-sel" id="idou-via-sel-${n}"></select>
+    `;
+    slot.appendChild(div);
+    fillEigyoshoSelect(document.getElementById(`idou-via-sel-${n}`), '選択してください');
+}
+
+function removeVia(n) {
+    const el = document.getElementById(`idou-via-${n}`);
+    if (el) el.remove();
+}
+
+function clearVia() {
+    const slot = document.getElementById('idou-via-slot');
+    if (slot) slot.innerHTML = '';
+}
+
+// 出発・到着の選択肢を用意する
+fillEigyoshoSelect(document.getElementById('idou-from'), '選択してください');
+fillEigyoshoSelect(document.getElementById('idou-to'),   '選択してください');
 
 // ═══════════════════════════════════════
 //  明細追加
@@ -1035,10 +1284,15 @@ function resetForm() {
         el.checked = false;
     });
 
-    // 種別を「受注票」に戻す
+    // 種別を「受注票」に戻す（移動モードなら通常表示に戻し、中継営業所も消す）
     document.getElementById('btn-juchu').classList.add('active');
     document.getElementById('btn-irai').classList.remove('active');
+    document.getElementById('btn-idou').classList.remove('active');
+    clearVia();
+    document.getElementById('idou-from').value = '';
+    document.getElementById('idou-to').value = '';
     syncTypeField();
+    applyModeVisibility();
 
     // 明細を初期化（品目1は残し、追加分のみ削除。入力値は上の処理でクリア済み）
     document.querySelectorAll('#meisai-container .meisai-item').forEach(item => {
@@ -1073,9 +1327,11 @@ function showToast(msg) {
 // ═══════════════════════════════════════
 function collectFormData() {
     const type = document.getElementById('field-type').value;
+    const isIdou    = type === '移動';
     const typeJuchu = type.includes('受注票');
     const typeIrai  = type.includes('依頼書');
 
+    // 移動のときは区分カードを表示していないため、区分は「移動」だけを立てる
     const allKubun = [
         { id:'kubun-1', label:'貸出来店' },
         { id:'kubun-2', label:'返却来店' },
@@ -1084,7 +1340,17 @@ function collectFormData() {
         { id:'kubun-5', label:'引取' },
         { id:'kubun-7', label:'移動' },
         { id:'kubun-6', label:'修理他' },
-    ].map(k => ({ ...k, checked: !!document.getElementById(k.id)?.checked }));
+    ].map(k => ({
+        ...k,
+        checked: isIdou ? (k.id === 'kubun-7') : !!document.getElementById(k.id)?.checked
+    }));
+
+    // 移動区間（出発 → 中継 → 到着）
+    const idouVia = [...document.querySelectorAll('.idou-via-sel')]
+                      .map(s => s.value).filter(Boolean);
+    const idouFrom = v('idou-from');
+    const idouTo   = v('idou-to');
+    const idouRoute = [idouFrom, ...idouVia, idouTo].filter(Boolean).join(' → ');
 
     const shipDateVal = document.getElementById('ship-date')?.value;
     let shipMonth = '', shipDay = '';
@@ -1110,6 +1376,21 @@ function collectFormData() {
 
     return {
         type, typeJuchu, typeIrai, allKubun,
+        isIdou, idouFrom, idouTo, idouVia, idouRoute,
+        idouLoad: {
+            date: fmtDate('idou-load-date'),
+            hour: v('idou-load-hour'), min: v('idou-load-min'),
+            am: !!document.getElementById('idou-load-am')?.checked,
+            pm: !!document.getElementById('idou-load-pm')?.checked,
+            koro: !!document.getElementById('idou-load-koro')?.checked,
+        },
+        idouArr: {
+            date: fmtDate('idou-arr-date'),
+            hour: v('idou-arr-hour'), min: v('idou-arr-min'),
+            am: !!document.getElementById('idou-arr-am')?.checked,
+            pm: !!document.getElementById('idou-arr-pm')?.checked,
+            hisshu: !!document.getElementById('idou-arr-hisshu')?.checked,
+        },
         rcvYear: v('rcv-year'), rcvMonth: v('rcv-month'), rcvDay: v('rcv-day'),
         rcvHour: v('rcv-hour'), rcvMin: v('rcv-min'),
         tokuisaki: v('field-tokuisaki'), hachusha: v('field-hachusha'),
@@ -1167,6 +1448,17 @@ function buildKeijoHTML(d) {
         const span = opts.colspan ? `colspan="${opts.colspan}"` : '';
         return `<td ${span} style="border:1px solid ${G};padding:2px 4px;font-size:${fs};${bg}${align}width:${w};">${content}</td>`;
     };
+
+    // 移動のときは、現行の帳票様式のまま該当欄に営業所と積込／到着を入れる。
+    // 欄名（得意先名・現場名）と中身が違うため、角括弧で何の情報かを明示する。
+    const idouTime = (t) => {
+        const flags = [t.am && 'AM中', t.pm && 'PM中', t.koro && '頃', t.hisshu && '必着']
+                        .filter(Boolean).join(' ');
+        const hm = t.hour ? `${t.hour}:${(t.min || '0').padStart(2, '0')}` : '';
+        return [t.date, hm, flags].filter(Boolean).join(' ');
+    };
+    const idouLoadStr = d.isIdou ? idouTime(d.idouLoad) : '';
+    const idouArrStr  = d.isIdou ? idouTime(d.idouArr)  : '';
 
     // 「頃」「未定」は日付の直後に続けて、確定日かどうかが一目で分かるようにする
     const shipDateStr = d.shipMonth
@@ -1233,15 +1525,19 @@ function buildKeijoHTML(d) {
   <table style="margin-bottom:2px;">
     <tr>
       ${td('12%','得意先名',{head:true,center:true})}
-      ${td('25%',esc(d.tokuisaki))}
+      ${td('25%', d.isIdou ? `［出発］${esc(d.idouFrom)}` : esc(d.tokuisaki))}
       ${td('10%','発注者',{head:true,center:true})}
-      ${td('18%',sama(d.hachusha))}
+      ${td('18%', d.isIdou ? '' : sama(d.hachusha))}
       ${td('15%','連絡先',{head:true,center:true})}
       ${td('20%',esc(d.renrakusaki))}
     </tr>
     <tr>
       ${td('12%','現場名',{head:true,center:true})}
-      <td colspan="3" style="border:1px solid ${G};padding:2px 4px;font-size:13px;">${esc(d.genba)}</td>
+      <td colspan="3" style="border:1px solid ${G};padding:2px 4px;font-size:13px;">${
+        d.isIdou
+          ? `［到着］${esc(d.idouTo)}${d.idouVia.length ? `　（経由 ${esc(d.idouVia.join(' → '))}）` : ''}`
+          : esc(d.genba)
+      }</td>
       <td style="border:1px solid ${G};padding:2px 4px;font-size:10px;text-align:center;width:15%;background:${BG};">
         運送便<br>
         <span style="font-size:10px;">${chk(d.unso==='自')}自　${chk(d.unso==='他')}他　${chk(d.unso==='傭')}傭</span>
@@ -1253,12 +1549,14 @@ function buildKeijoHTML(d) {
   <!-- 日程 -->
   <table style="margin-bottom:2px;">
     <tr>
-      ${td('11%','出荷(入荷)日',{head:true,center:true,fs:'10px'})}
-      <td style="border:1px solid ${G};padding:2px 6px;width:39%;font-size:12px;">${shipStr}</td>
-      ${td('14%','使用開始(終了)',{head:true,center:true,fs:'10px'})}
-      <td style="border:1px solid ${G};padding:2px 4px;font-size:11px;text-align:center;width:15%;font-size:12px;">${esc(d.useStart)} / ${esc(d.useEnd)}</td>
+      ${td('11%', d.isIdou ? '積込(出発)日' : '出荷(入荷)日', {head:true,center:true,fs:'10px'})}
+      <td style="border:1px solid ${G};padding:2px 6px;width:39%;font-size:12px;">${d.isIdou ? esc(idouLoadStr) : shipStr}</td>
+      ${td('14%', d.isIdou ? '到着日' : '使用開始(終了)', {head:true,center:true,fs:'10px'})}
+      <td style="border:1px solid ${G};padding:2px 4px;text-align:center;width:15%;font-size:12px;">${
+        d.isIdou ? esc(idouArrStr) : `${esc(d.useStart)} / ${esc(d.useEnd)}`
+      }</td>
       ${td('9%','返却予定',{head:true,center:true,fs:'10px'})}
-      <td style="border:1px solid ${G};padding:2px 4px;font-size:11px;text-align:center;width:12%;">${esc(d.henkyaku)}</td>
+      <td style="border:1px solid ${G};padding:2px 4px;font-size:11px;text-align:center;width:12%;">${d.isIdou ? '' : esc(d.henkyaku)}</td>
     </tr>
   </table>
 
@@ -1362,8 +1660,22 @@ function loadHtml2Pdf() {
 // ═══════════════════════════════════════
 //  PDFプレビュー
 // ═══════════════════════════════════════
+// 出力前の必須チェック（移動のときは客先ではなく営業所を見る）
+function validateBeforeOutput() {
+    if (isIdouMode()) {
+        if (!v('idou-from')) { showToast('⚠️ 出発営業所を選択してください'); return false; }
+        if (!v('idou-to'))   { showToast('⚠️ 到着営業所を選択してください'); return false; }
+        if (v('idou-from') === v('idou-to')) {
+            showToast('⚠️ 出発と到着が同じ営業所です'); return false;
+        }
+        return true;
+    }
+    if (!v('field-tokuisaki')) { showToast('⚠️ 得意先名を入力してください'); return false; }
+    return true;
+}
+
 function showPreview() {
-    if (!v('field-tokuisaki')) { showToast('⚠️ 得意先名を入力してください'); return; }
+    if (!validateBeforeOutput()) return;
 
     const data = collectFormData();
     const frame = document.getElementById('preview-frame');
@@ -1518,8 +1830,11 @@ async function sendFromPreview() {
 //  PDF生成 → メール送信（Web Share / mailto）
 // ═══════════════════════════════════════
 async function sendAsPdf() {
-    const tokuisaki = v('field-tokuisaki');
-    if (!tokuisaki) { showToast('⚠️ 得意先名を入力してください'); return; }
+    if (!validateBeforeOutput()) return;
+    // 移動はファイル名も「移動_出発-到着」にして、受注票と一目で区別できるようにする
+    const tokuisaki = isIdouMode()
+        ? `移動_${v('idou-from')}-${v('idou-to')}`
+        : v('field-tokuisaki');
 
     showToast('📄 PDFを生成中です…');
 
@@ -1537,7 +1852,7 @@ async function sendAsPdf() {
     const ymd = data.rcvYear && data.rcvMonth && data.rcvDay
         ? `${data.rcvYear}${data.rcvMonth.padStart(2,'0')}${data.rcvDay.padStart(2,'0')}`
         : (() => { const n=new Date(); return `${n.getFullYear()}${String(n.getMonth()+1).padStart(2,'0')}${String(n.getDate()).padStart(2,'0')}`; })();
-    let filename = [tokuisaki, data.genba, ymd].filter(Boolean).join('_') + '.pdf';
+    let filename = [tokuisaki, data.isIdou ? '' : data.genba, ymd].filter(Boolean).join('_') + '.pdf';
     filename = filename.replace(/[\/\\:*?"<>|]/g, '');
 
     // 帳票を画面内に一時配置してキャプチャ。
