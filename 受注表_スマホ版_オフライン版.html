@@ -207,6 +207,42 @@
             gap: 8px;
             margin-bottom: 0;
         }
+        .type-hint {
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--gray);
+        }
+        .tantou-save-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .add-meisai-btn {
+            width: 100%;
+            padding: 12px;
+            border: 1.5px dashed var(--green);
+            border-radius: 10px;
+            background: var(--green-light);
+            color: var(--green);
+            font-size: 15px;
+            font-weight: bold;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .add-meisai-btn:active { background: #bbf7d0; }
+        .mini-btn {
+            flex-shrink: 0;
+            padding: 8px 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            background: #fafafa;
+            font-size: 13px;
+            font-family: inherit;
+            color: var(--gray);
+            cursor: pointer;
+        }
         .type-btn {
             padding: 14px;
             border: 2px solid var(--border);
@@ -443,6 +479,13 @@
             font-size: 13px;
             color: var(--gray);
         }
+        #hinmoku-ac .ac-more {
+            padding: 9px 12px;
+            font-size: 12px;
+            color: var(--gray);
+            background: #f9fafb;
+            border-top: 1px solid var(--border);
+        }
 
         /* ─── セクション区切り ─── */
         .divider { height: 1px; background: var(--border); margin: 10px 0; }
@@ -489,6 +532,7 @@
             <button class="type-btn active" id="btn-juchu" onclick="toggleType('受注票')">受注票</button>
             <button class="type-btn" id="btn-irai" onclick="toggleType('依頼書')">依頼書</button>
         </div>
+        <div class="type-hint">※ 両方に該当する場合は両方を選択できます</div>
         <input type="hidden" id="field-type" value="受注票">
     </div>
 </div>
@@ -502,7 +546,8 @@
             <label class="checkbox-item"><input type="checkbox" id="kubun-2" value="返却来店"> 返却来店</label>
             <label class="checkbox-item"><input type="checkbox" id="kubun-3" value="配達"> 配達</label>
             <label class="checkbox-item"><input type="checkbox" id="kubun-4" value="Wレンタル"> Wレンタル</label>
-            <label class="checkbox-item"><input type="checkbox" id="kubun-5" value="引取移動"> 引取移動</label>
+            <label class="checkbox-item"><input type="checkbox" id="kubun-5" value="引取"> 引取</label>
+            <label class="checkbox-item"><input type="checkbox" id="kubun-7" value="移動"> 移動</label>
             <label class="checkbox-item"><input type="checkbox" id="kubun-6" value="修理他"> 修理他</label>
         </div>
     </div>
@@ -535,18 +580,21 @@
             <label>得意先名 *</label>
             <div class="field-row">
                 <input type="text" id="field-tokuisaki" placeholder="得意先名を入力" autocomplete="organization">
+                <button type="button" class="mic-btn" data-target="field-tokuisaki" aria-label="音声入力">🎤</button>
             </div>
         </div>
         <div class="field">
             <label>発注者</label>
             <div class="field-row">
                 <input type="text" id="field-hachusha" placeholder="発注者名を入力">
+                <button type="button" class="mic-btn" data-target="field-hachusha" aria-label="音声入力">🎤</button>
             </div>
         </div>
         <div class="field">
             <label>現場名 *</label>
             <div class="field-row">
                 <input type="text" id="field-genba" placeholder="現場名を入力">
+                <button type="button" class="mic-btn" data-target="field-genba" aria-label="音声入力">🎤</button>
             </div>
         </div>
         <div class="field">
@@ -587,9 +635,13 @@
                     <span>分</span>
                 </div>
             </div>
-            <div style="display:flex; gap:8px; margin-top:8px;">
-                <label class="checkbox-item" style="flex:1"><input type="checkbox" id="hisshu"> 必着</label>
-                <label class="checkbox-item" style="flex:1"><input type="checkbox" id="kyochu"> 今日中</label>
+            <div class="checkbox-grid col3" style="margin-top:8px;">
+                <label class="checkbox-item"><input type="checkbox" id="hisshu"> 必着</label>
+                <label class="checkbox-item"><input type="checkbox" id="kyochu"> 今日中</label>
+                <label class="checkbox-item"><input type="checkbox" id="am-chu"> AM中</label>
+                <label class="checkbox-item"><input type="checkbox" id="pm-chu"> PM中</label>
+                <label class="checkbox-item"><input type="checkbox" id="ship-koro"> 頃</label>
+                <label class="checkbox-item"><input type="checkbox" id="ship-mitei"> 未定</label>
             </div>
         </div>
         <div class="divider"></div>
@@ -653,6 +705,9 @@
             </div>
         </div>
     </div>
+    <div style="padding:0 14px 14px;">
+        <button type="button" class="add-meisai-btn" onclick="addMeisai()">＋ 品目を追加</button>
+    </div>
 </div>
 
 <!-- ⑦ 書類 -->
@@ -676,6 +731,12 @@
 <div class="card">
     <div class="card-header"><span class="icon">👤</span>担当者情報</div>
     <div class="card-body">
+        <div class="tantou-save-row">
+            <label class="checkbox-item" style="flex:1">
+                <input type="checkbox" id="tantou-remember"> この端末に記憶して次回も自動入力
+            </label>
+            <button type="button" class="mini-btn" onclick="clearTantouInfo()">記憶を消去</button>
+        </div>
         <div class="two-col">
             <div class="field">
                 <label>受注営</label>
@@ -728,6 +789,7 @@
     <div class="card-body">
         <div class="field-row">
             <textarea id="field-renraku" placeholder="注意事項・特記事項などを自由に記入" style="min-height:90px;"></textarea>
+            <button type="button" class="mic-btn" data-target="field-renraku" aria-label="音声入力" style="align-self:flex-start;">🎤</button>
         </div>
     </div>
 </div>
@@ -828,10 +890,26 @@ function fillCurrentDateTime() {
 // ═══════════════════════════════════════
 //  書類種別トグル
 // ═══════════════════════════════════════
+// 受注票・依頼書はそれぞれ独立してON/OFFできる（両方に該当する案件があるため）。
+// 保存形式は従来どおり field-type の文字列で、複数選択時は「受注票,依頼書」となる。
 function toggleType(type) {
-    document.getElementById('field-type').value = type;
-    document.getElementById('btn-juchu').classList.toggle('active', type === '受注票');
-    document.getElementById('btn-irai').classList.toggle('active', type === '依頼書');
+    const btn = type === '受注票' ? document.getElementById('btn-juchu')
+                                  : document.getElementById('btn-irai');
+    btn.classList.toggle('active');
+
+    // どちらも未選択になる状態は避け、押した方を必ず有効にする
+    const juchu = document.getElementById('btn-juchu').classList.contains('active');
+    const irai  = document.getElementById('btn-irai').classList.contains('active');
+    if (!juchu && !irai) btn.classList.add('active');
+
+    syncTypeField();
+}
+
+function syncTypeField() {
+    const types = [];
+    if (document.getElementById('btn-juchu').classList.contains('active')) types.push('受注票');
+    if (document.getElementById('btn-irai').classList.contains('active'))  types.push('依頼書');
+    document.getElementById('field-type').value = types.join(',');
 }
 
 // ═══════════════════════════════════════
@@ -893,13 +971,62 @@ function v(id) {
 }
 
 // ═══════════════════════════════════════
+//  担当者情報の記憶（毎回同じ内容を打ち直す手間を省く）
+//  ※ 保存先はこの端末のブラウザ内のみ。サーバーへは一切送信しない。
+// ═══════════════════════════════════════
+const TANTOU_KEY = 'juchu-tantou-v1';
+const TANTOU_FIELDS = ['field-juchunei', 'field-irainei', 'field-juchusha', 'field-unsote', 'field-unsoseikyuu'];
+
+function saveTantouInfo() {
+    const on = document.getElementById('tantou-remember')?.checked;
+    try {
+        if (!on) { localStorage.removeItem(TANTOU_KEY); return; }
+        const data = {};
+        TANTOU_FIELDS.forEach(id => { data[id] = v(id); });
+        localStorage.setItem(TANTOU_KEY, JSON.stringify(data));
+    } catch (e) { /* プライベートモード等で保存できなくても動作は継続 */ }
+}
+
+function restoreTantouInfo() {
+    try {
+        const raw = localStorage.getItem(TANTOU_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        const cb = document.getElementById('tantou-remember');
+        if (cb) cb.checked = true;
+        TANTOU_FIELDS.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && data[id]) el.value = data[id];
+        });
+    } catch (e) { /* 壊れた保存内容は無視して空欄のまま使う */ }
+}
+
+function clearTantouInfo() {
+    try { localStorage.removeItem(TANTOU_KEY); } catch (e) {}
+    const cb = document.getElementById('tantou-remember');
+    if (cb) cb.checked = false;
+    TANTOU_FIELDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    showToast('🗑 記憶した担当者情報を消去しました');
+}
+
+// 担当者欄の変更と「記憶する」の切り替えを保存に反映
+document.addEventListener('change', (e) => {
+    if (!e.target) return;
+    if (e.target.id === 'tantou-remember' || TANTOU_FIELDS.includes(e.target.id)) saveTantouInfo();
+});
+document.addEventListener('DOMContentLoaded', restoreTantouInfo);
+
+// ═══════════════════════════════════════
 //  リセット
 // ═══════════════════════════════════════
 function resetForm() {
     if (!confirm('入力内容をすべてクリアしますか？')) return;
 
-    // テキスト入力
-    document.querySelectorAll('input[type="text"], textarea').forEach(el => {
+    // テキスト入力・日付入力（日付欄が前回の選択のまま残ると誤入力の原因になるため一緒にクリア）
+    document.querySelectorAll('input[type="text"], input[type="date"], textarea').forEach(el => {
         el.value = '';
     });
 
@@ -909,9 +1036,9 @@ function resetForm() {
     });
 
     // 種別を「受注票」に戻す
-    document.getElementById('field-type').value = '受注票';
     document.getElementById('btn-juchu').classList.add('active');
     document.getElementById('btn-irai').classList.remove('active');
+    syncTypeField();
 
     // 明細を初期化（品目1は残し、追加分のみ削除。入力値は上の処理でクリア済み）
     document.querySelectorAll('#meisai-container .meisai-item').forEach(item => {
@@ -921,6 +1048,9 @@ function resetForm() {
 
     // 日時を現在時刻に更新
     fillCurrentDateTime();
+
+    // 保存済みの担当者情報は毎回入力する手間を省くため復元する
+    restoreTantouInfo();
 
     showToast('🔄 フォームをリセットしました');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -943,13 +1073,16 @@ function showToast(msg) {
 // ═══════════════════════════════════════
 function collectFormData() {
     const type = document.getElementById('field-type').value;
+    const typeJuchu = type.includes('受注票');
+    const typeIrai  = type.includes('依頼書');
 
     const allKubun = [
         { id:'kubun-1', label:'貸出来店' },
         { id:'kubun-2', label:'返却来店' },
         { id:'kubun-3', label:'配達' },
         { id:'kubun-4', label:'Wレンタル(注文書)' },
-        { id:'kubun-5', label:'引取移動' },
+        { id:'kubun-5', label:'引取' },
+        { id:'kubun-7', label:'移動' },
         { id:'kubun-6', label:'修理他' },
     ].map(k => ({ ...k, checked: !!document.getElementById(k.id)?.checked }));
 
@@ -976,7 +1109,7 @@ function collectFormData() {
     const unsoEl = document.querySelector('input[name="unso"]:checked');
 
     return {
-        type, allKubun,
+        type, typeJuchu, typeIrai, allKubun,
         rcvYear: v('rcv-year'), rcvMonth: v('rcv-month'), rcvDay: v('rcv-day'),
         rcvHour: v('rcv-hour'), rcvMin: v('rcv-min'),
         tokuisaki: v('field-tokuisaki'), hachusha: v('field-hachusha'),
@@ -986,6 +1119,10 @@ function collectFormData() {
         shipHour: v('ship-hour'), shipMin: v('ship-min'),
         hisshu: !!document.getElementById('hisshu')?.checked,
         kyochu: !!document.getElementById('kyochu')?.checked,
+        amChu:  !!document.getElementById('am-chu')?.checked,
+        pmChu:  !!document.getElementById('pm-chu')?.checked,
+        shipKoro:  !!document.getElementById('ship-koro')?.checked,
+        shipMitei: !!document.getElementById('ship-mitei')?.checked,
         useStart: fmtDate('use-start'), useEnd: fmtDate('use-end'),
         henkyaku: fmtDate('field-henkyaku'),
         meisaiItems,
@@ -1008,20 +1145,40 @@ function collectFormData() {
 function buildKeijoHTML(d) {
     const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const chk = b => b ? '☑' : '□';
+    // 氏名欄に敬称を自動付与（未入力なら空欄のまま。既に「様」で終わる場合は二重付与しない）
+    const sama = s => {
+        const t = (s || '').trim();
+        if (!t) return '';
+        return esc(t) + (/(様|御中)$/.test(t) ? '' : ' 様');
+    };
+    // 依頼営欄は担当者名が入る場合と営業所名が入る場合があるため、
+    // 営業所名（「〜営」「〜営業所」「〜店」等）と判断できるときは敬称を付けない
+    const samaIfPerson = s => {
+        const t = (s || '').trim();
+        if (!t) return '';
+        if (/(営|営業所|支店|店|課|部|センター)$/.test(t)) return esc(t);
+        return sama(t);
+    };
     const G = '#16a34a', GD = '#14532d', GR = '#f0fdf4', BG = '#f3f4f6';
     const td = (w, content, opts = {}) => {
         const bg = opts.head ? `background:${BG};` : '';
         const align = opts.center ? 'text-align:center;' : '';
-        const fs = opts.fs || '11px';
+        const fs = opts.fs || '13px';   // FAX送信時に読み取れるよう拡大（11px→13px）
         const span = opts.colspan ? `colspan="${opts.colspan}"` : '';
         return `<td ${span} style="border:1px solid ${G};padding:2px 4px;font-size:${fs};${bg}${align}width:${w};">${content}</td>`;
     };
 
+    // 「頃」「未定」は日付の直後に続けて、確定日かどうかが一目で分かるようにする
+    const shipDateStr = d.shipMonth
+        ? `${d.shipMonth} 月 ${d.shipDay} 日${d.shipKoro ? ' 頃' : ''}`
+        : (d.shipMitei ? '' : '');
     const shipStr = [
-        d.shipMonth ? `${d.shipMonth} 月 ${d.shipDay} 日` : '',
+        d.shipMitei ? `${shipDateStr || ''}（未定）`.trim() : shipDateStr,
         d.shipHour  ? `${d.shipHour} 時 ${d.shipMin||'0'} 分` : '',
         `${chk(d.hisshu)}必着`,
         `${chk(d.kyochu)}今日中`,
+        `${chk(d.amChu)}AM中`,
+        `${chk(d.pmChu)}PM中`,
     ].filter(Boolean).join('　');
 
     // 明細は6件ごとにページ分割（7品目目から2ページ目…）
@@ -1051,16 +1208,16 @@ function buildKeijoHTML(d) {
         const footer = pageCount > 1
             ? `営F-21 1　（${pageIdx + 1} / ${pageCount}）`
             : '営F-21 1';
-        return `<div class="keijo-page" style="width:210mm;min-height:148mm;padding:5mm 7mm;background:#ffffff;position:relative;font-family:'Hiragino Sans','Hiragino Kaku Gothic ProN',Meiryo,sans-serif;color:#000;">
+        return `<div class="keijo-page" style="width:210mm;height:148mm;padding:3mm 7mm;background:#ffffff;overflow:hidden;position:relative;font-family:'Hiragino Sans','Hiragino Kaku Gothic ProN',Meiryo,sans-serif;color:#000;">
 
   <!-- ヘッダー -->
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;gap:6px;">
     <div style="flex:1 1 auto;min-width:0;">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:3px;font-size:13px;font-weight:bold;">
-        <span>${chk(d.type==='受注票')} 受注票</span>
-        <span>${chk(d.type==='依頼書')} 依頼書</span>
+        <span>${chk(d.typeJuchu)} 受注票</span>
+        <span>${chk(d.typeIrai)} 依頼書</span>
       </div>
-      <div style="font-size:9px;display:flex;gap:4px 8px;flex-wrap:wrap;">
+      <div style="font-size:11px;display:flex;gap:4px 8px;flex-wrap:wrap;">
         ${d.allKubun.map(k=>`<span style="white-space:nowrap;">${chk(k.checked)}${k.label}</span>`).join('')}
       </div>
     </div>
@@ -1078,13 +1235,13 @@ function buildKeijoHTML(d) {
       ${td('12%','得意先名',{head:true,center:true})}
       ${td('25%',esc(d.tokuisaki))}
       ${td('10%','発注者',{head:true,center:true})}
-      ${td('18%',esc(d.hachusha))}
+      ${td('18%',sama(d.hachusha))}
       ${td('15%','連絡先',{head:true,center:true})}
       ${td('20%',esc(d.renrakusaki))}
     </tr>
     <tr>
       ${td('12%','現場名',{head:true,center:true})}
-      <td colspan="3" style="border:1px solid ${G};padding:2px 4px;font-size:11px;">${esc(d.genba)}</td>
+      <td colspan="3" style="border:1px solid ${G};padding:2px 4px;font-size:13px;">${esc(d.genba)}</td>
       <td style="border:1px solid ${G};padding:2px 4px;font-size:10px;text-align:center;width:15%;background:${BG};">
         運送便<br>
         <span style="font-size:10px;">${chk(d.unso==='自')}自　${chk(d.unso==='他')}他　${chk(d.unso==='傭')}傭</span>
@@ -1097,9 +1254,9 @@ function buildKeijoHTML(d) {
   <table style="margin-bottom:2px;">
     <tr>
       ${td('11%','出荷(入荷)日',{head:true,center:true,fs:'10px'})}
-      <td style="border:1px solid ${G};padding:2px 6px;font-size:11px;width:39%;">${shipStr}</td>
+      <td style="border:1px solid ${G};padding:2px 6px;width:39%;font-size:12px;">${shipStr}</td>
       ${td('14%','使用開始(終了)',{head:true,center:true,fs:'10px'})}
-      <td style="border:1px solid ${G};padding:2px 4px;font-size:11px;text-align:center;width:15%;">${esc(d.useStart)} / ${esc(d.useEnd)}</td>
+      <td style="border:1px solid ${G};padding:2px 4px;font-size:11px;text-align:center;width:15%;font-size:12px;">${esc(d.useStart)} / ${esc(d.useEnd)}</td>
       ${td('9%','返却予定',{head:true,center:true,fs:'10px'})}
       <td style="border:1px solid ${G};padding:2px 4px;font-size:11px;text-align:center;width:12%;">${esc(d.henkyaku)}</td>
     </tr>
@@ -1134,17 +1291,17 @@ function buildKeijoHTML(d) {
   <div style="display:flex;gap:5px;height:72px;">
     <div style="width:32%;border:1px solid ${G};padding:3px;font-size:10px;overflow:hidden;">
       <div style="font-weight:bold;color:${GD};margin-bottom:1px;">連絡事項</div>
-      <div style="font-size:10px;line-height:1.35;white-space:pre-wrap;">${esc(d.renraku)}</div>
+      <div style="font-size:11.5px;line-height:1.35;white-space:pre-wrap;">${esc(d.renraku)}</div>
     </div>
     <div style="width:51%;display:flex;flex-direction:column;gap:2px;">
       <table>
         <tr>
           <td style="border:1px solid ${G};background:${BG};text-align:center;font-size:9px;padding:1px;width:14%;">受注営</td>
-          <td style="border:1px solid ${G};text-align:center;font-size:10px;padding:1px;width:19%;">${esc(d.juchunei)}</td>
+          <td style="border:1px solid ${G};text-align:center;font-size:11px;padding:1px;width:19%;">${esc(d.juchunei)}</td>
           <td style="border:1px solid ${G};background:${BG};text-align:center;font-size:9px;padding:1px;width:14%;">依頼営</td>
-          <td style="border:1px solid ${G};text-align:center;font-size:10px;padding:1px;width:19%;">${esc(d.irainei)}</td>
+          <td style="border:1px solid ${G};text-align:center;font-size:11px;padding:1px;width:19%;">${samaIfPerson(d.irainei)}</td>
           <td style="border:1px solid ${G};background:${BG};text-align:center;font-size:8px;padding:1px;width:15%;">運送手配</td>
-          <td style="border:1px solid ${G};text-align:center;font-size:10px;padding:1px;width:19%;">${esc(d.unsote)}</td>
+          <td style="border:1px solid ${G};text-align:center;font-size:11px;padding:1px;width:19%;">${esc(d.unsote)}</td>
         </tr>
         <tr>
           <td style="border:1px solid ${G};background:${BG};text-align:center;font-size:9px;padding:1px;">受注者</td>
@@ -1152,7 +1309,7 @@ function buildKeijoHTML(d) {
           <td style="border:1px solid ${G};background:${BG};text-align:center;font-size:8px;padding:1px;">担当者 様</td>
           <td style="border:1px solid ${G};text-align:center;font-size:10px;font-weight:bold;padding:1px;">${esc(d.tantou)}</td>
           <td style="border:1px solid ${G};background:${BG};text-align:center;font-size:8px;padding:1px;">運送請求</td>
-          <td style="border:1px solid ${G};text-align:center;font-size:10px;padding:1px;">${esc(d.unsoseikyuu)}</td>
+          <td style="border:1px solid ${G};text-align:center;font-size:11px;padding:1px;">${esc(d.unsoseikyuu)}</td>
         </tr>
       </table>
       <table>
@@ -1544,16 +1701,47 @@ function levenshtein(a, b) {
     }
     return prev[n];
 }
+// 正規化済みの品名は一度だけ作ってキャッシュする（毎打鍵で1299件を変換し直さないため）
+let HINMOKU_NORM = null;
+function hinmokuNorm() {
+    if (!HINMOKU_NORM) HINMOKU_NORM = HINMOKU_LIST.map(kanaNormalize);
+    return HINMOKU_NORM;
+}
+
+// スペース区切りの複数キーワードで絞り込む（例:「0.7 後方」→ 両方を含むものだけ）。
+// 半角/全角・ひらがな/カタカナの違いは正規化して無視する。
+function searchHinmoku(query, limit) {
+    const terms = query.trim().split(/[\s　]+/).filter(Boolean).map(kanaNormalize).filter(Boolean);
+    if (!terms.length) return { list: HINMOKU_LIST.slice(0, limit), total: HINMOKU_LIST.length };
+
+    const norms = hinmokuNorm();
+    const hits = [];
+    for (let i = 0; i < norms.length; i++) {
+        const nn = norms[i];
+        let ok = true, firstPos = Infinity;
+        for (const t of terms) {
+            const p = nn.indexOf(t);
+            if (p < 0) { ok = false; break; }
+            if (p < firstPos) firstPos = p;
+        }
+        if (ok) hits.push({ name: HINMOKU_LIST[i], pos: firstPos, len: nn.length });
+    }
+    // 語頭に近いもの・名前が短いものほど目的の品名である可能性が高い
+    hits.sort((a, b) => a.pos - b.pos || a.len - b.len);
+    return { list: hits.slice(0, limit).map(h => h.name), total: hits.length };
+}
+
 // クエリに近い品名を近似度順で返す（表記ゆれ・音声認識の誤差を吸収）
 function fuzzyMatchHinmoku(query, limit) {
     const nq = kanaNormalize(query);
     if (!nq) return [];
     const threshold = Math.max(1, Math.ceil(nq.length * 0.3));
+    const norms = hinmokuNorm();
     const scored = [];
-    for (const name of HINMOKU_LIST) {
-        const nn = kanaNormalize(name);
+    for (let i = 0; i < norms.length; i++) {
+        const nn = norms[i];
         const dist = (nn.includes(nq) || nq.includes(nn)) ? 0 : levenshtein(nq, nn);
-        if (dist <= threshold) scored.push({ name, dist });
+        if (dist <= threshold) scored.push({ name: HINMOKU_LIST[i], dist });
     }
     scored.sort((a, b) => a.dist - b.dist);
     return scored.slice(0, limit).map(s => s.name);
@@ -1601,22 +1789,33 @@ function ensureAcBox() {
 function showHinmokuSuggest(input) {
     const box = ensureAcBox();
     acInput = input;
-    const q = input.value.trim().toLowerCase();
+    const raw = input.value.trim();
+    const AC_LIMIT = 50;
+    let total;
 
-    if (!q) {
-        acMatches = HINMOKU_LIST.slice(0, 30);
+    if (!raw) {
+        acMatches = HINMOKU_LIST.slice(0, AC_LIMIT);
+        total = HINMOKU_LIST.length;
     } else {
-        acMatches = HINMOKU_LIST.filter(n => n.toLowerCase().includes(q)).slice(0, 30);
-        // 完全一致する候補が無ければ、表記ゆれ・音声認識の誤差を許容したあいまい検索にフォールバック
+        const res = searchHinmoku(raw, AC_LIMIT);
+        acMatches = res.list;
+        total = res.total;
+        // キーワードで1件も当たらなければ、音声認識の誤差を許容したあいまい検索に切り替える
         if (acMatches.length === 0) {
-            acMatches = fuzzyMatchHinmoku(input.value.trim(), 30);
+            acMatches = fuzzyMatchHinmoku(raw, AC_LIMIT);
+            total = acMatches.length;
         }
     }
 
     if (acMatches.length === 0) {
         box.innerHTML = '<div class="ac-empty">該当する品名がありません（手入力でOK）</div>';
     } else {
-        box.innerHTML = acMatches.map(n => `<div class="ac-item">${acEscape(n)}</div>`).join('');
+        // 表示しきれない件数を伝え、スペース区切りでの絞り込みに誘導する
+        const rest = total - acMatches.length;
+        const more = rest > 0
+            ? `<div class="ac-more">他 ${rest} 件 … スペースで絞り込めます（例:「0.7 後方」）</div>`
+            : '';
+        box.innerHTML = acMatches.map(n => `<div class="ac-item">${acEscape(n)}</div>`).join('') + more;
     }
 
     const r = input.getBoundingClientRect();
@@ -1652,6 +1851,10 @@ document.addEventListener('focusout', (e) => {
         setTimeout(() => { if (!acInteracting) hideHinmokuSuggest(); }, 200);
     }
 });
+// 画面回転・サイズ変更時は候補の位置と幅が合わなくなるため閉じる
+window.addEventListener('resize', hideHinmokuSuggest);
+window.addEventListener('orientationchange', hideHinmokuSuggest);
+
 // ページ側がスクロールした時だけ閉じる（リスト自身のスクロールでは閉じない）
 window.addEventListener('scroll', (e) => {
     if (!acInput) return;
