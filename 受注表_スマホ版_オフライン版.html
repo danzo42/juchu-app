@@ -1115,6 +1115,9 @@ const EIGYOSHO_AREAS = [
     ['センター', ['石川センター','石川第2センター','特機センター','武生センター']]
 ];
 
+// 営業所名かどうかの判定に使う（帳票で営業所名に「様」を付けないため）
+const EIGYOSHO_NAMES = new Set(EIGYOSHO_AREAS.flatMap(([, names]) => names));
+
 function fillEigyoshoSelect(sel, placeholder) {
     const blank = document.createElement('option');
     blank.value = '';
@@ -1438,10 +1441,11 @@ function buildKeijoHTML(d) {
         return esc(t) + (/(様|御中)$/.test(t) ? '' : ' 様');
     };
     // 依頼営欄は担当者名が入る場合と営業所名が入る場合があるため、
-    // 営業所名（「〜営」「〜営業所」「〜店」等）と判断できるときは敬称を付けない
+    // 営業所一覧に載っている名前（長岡・金沢中央 等）や組織名らしい語尾のときは敬称を付けない
     const samaIfPerson = s => {
         const t = (s || '').trim();
         if (!t) return '';
+        if (EIGYOSHO_NAMES.has(t)) return esc(t);
         if (/(営|営業所|支店|店|課|部|センター)$/.test(t)) return esc(t);
         return sama(t);
     };
