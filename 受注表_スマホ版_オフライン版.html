@@ -1463,7 +1463,7 @@ function buildKeijoHTML(d) {
     // 「AM中」などが行の途中で分断されないよう、項目ごとに折り返しを禁止する
     const nw = s => `<span style="white-space:nowrap;">${s}</span>`;
     const idouTime = (t) => {
-        const hm = t.hour ? `${esc(t.hour)}:${String(t.min || '0').padStart(2, '0')}` : '';
+        const hm = t.hour ? `${esc(t.hour)}:${esc(String(t.min || '0').padStart(2, '0'))}` : '';
         // 日付が未定のときは日付欄に（未定）と出し、確定日かどうかを一目で分かるようにする
         const base = [esc(t.date), hm].filter(Boolean).join(' ');
         const head = t.mitei ? `${base}（未定）`.trim() : base;
@@ -1564,10 +1564,10 @@ function buildKeijoHTML(d) {
   <table style="margin-bottom:2px;">
     <tr>
       ${td('11%', d.isIdou ? '積込(出発)日' : '出荷(入荷)日', {head:true,center:true,fs:'10px'})}
-      <td style="border:1px solid ${G};padding:2px 6px;width:39%;font-size:12px;">${d.isIdou ? esc(idouLoadStr) : shipStr}</td>
+      <td style="border:1px solid ${G};padding:2px 6px;width:39%;font-size:12px;">${d.isIdou ? idouLoadStr : shipStr}</td>
       ${td('14%', d.isIdou ? '到着日' : '使用開始(終了)', {head:true,center:true,fs:'10px'})}
       <td style="border:1px solid ${G};padding:2px 4px;text-align:center;width:15%;font-size:12px;">${
-        d.isIdou ? esc(idouArrStr) : `${esc(d.useStart)} / ${esc(d.useEnd)}`
+        d.isIdou ? idouArrStr : `${esc(d.useStart)} / ${esc(d.useEnd)}`
       }</td>
       ${td('9%','返却予定',{head:true,center:true,fs:'10px'})}
       <td style="border:1px solid ${G};padding:2px 4px;font-size:11px;text-align:center;width:12%;">${d.isIdou ? '' : esc(d.henkyaku)}</td>
