@@ -401,6 +401,61 @@
         }
 
         /* ─── メール送信エリア ─── */
+        /* ─── 下書き・送信履歴 ─── */
+        .top-tools { margin: 12px 12px 0; display: flex; flex-direction: column; gap: 8px; }
+        .top-tools [hidden] { display: none !important; }
+        .draft-banner, .edit-banner {
+            border-radius: 12px; padding: 12px 14px;
+            display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow);
+        }
+        .draft-banner { background: #fffbeb; border: 1.5px solid #f59e0b; }
+        .edit-banner { background: #eff6ff; border: 1.5px solid #3b82f6; }
+        .draft-banner .msg, .edit-banner .msg { flex: 1; font-size: 14px; font-weight: bold; color: #111; line-height: 1.4; }
+        .draft-banner small, .edit-banner small { display: block; font-weight: normal; font-size: 12px; color: var(--gray); }
+        .banner-btns { display: flex; gap: 6px; flex-shrink: 0; }
+        .banner-btns button {
+            padding: 9px 12px; border-radius: 8px; font-size: 13px; font-weight: bold; font-family: inherit;
+            cursor: pointer; border: 1.5px solid var(--border); background: #fff; color: #374151;
+        }
+        .banner-btns .primary { background: var(--green); border-color: var(--green); color: #fff; }
+        .hist-open {
+            width: 100%; padding: 11px; border: 1.5px solid var(--green); border-radius: 10px;
+            background: #fff; color: var(--green-dark); font-size: 14px; font-weight: bold; font-family: inherit; cursor: pointer;
+        }
+        .hist-open:active { background: var(--green-light); }
+        .hist-count { font-weight: normal; color: var(--gray); font-size: 12px; margin-left: 4px; }
+        .hist-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 9000;
+            display: none; align-items: flex-end; justify-content: center;
+        }
+        .hist-overlay.show { display: flex; }
+        .hist-sheet {
+            width: 100%; max-width: 640px; max-height: 88vh; background: #f9fafb;
+            border-radius: 16px 16px 0 0; display: flex; flex-direction: column; overflow: hidden;
+        }
+        .hist-note { font-size: 12px; color: var(--gray); padding: 10px 14px 0; line-height: 1.5; }
+        .hist-list {
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding: 10px 12px calc(16px + env(safe-area-inset-bottom));
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .hist-empty { text-align: center; color: var(--gray); font-size: 14px; padding: 30px 10px; line-height: 1.6; }
+        .hist-item { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+        .hist-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+        .hist-date { font-size: 12px; color: var(--gray); flex: 1; }
+        .hist-kind { font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 999px; background: var(--green-light); color: var(--green-dark); }
+        .hist-kind.idou { background: #fef3c7; color: #7c3a06; }
+        .hist-kind.fix { background: #dbeafe; color: #1e40af; }
+        .hist-main { font-size: 16px; font-weight: bold; color: #111; word-break: break-all; }
+        .hist-sub { font-size: 13px; color: #374151; margin-top: 2px; word-break: break-all; }
+        .hist-btns { display: flex; gap: 6px; margin-top: 10px; }
+        .hist-btns button {
+            flex: 1; padding: 10px 4px; border-radius: 8px; font-size: 13px; font-weight: bold; font-family: inherit;
+            cursor: pointer; border: 1.5px solid var(--border); background: #fafafa; color: #374151;
+        }
+        .hist-btns .hist-copy { background: var(--green); border-color: var(--green); color: #fff; }
+        .hist-btns .hist-del { flex: 0 0 auto; padding: 10px 12px; color: var(--red); }
+
         .mail-section {
             margin: 12px;
         }
@@ -594,6 +649,22 @@
         if (el) el.textContent = '受付 ' + n.getFullYear() + '/' + p(n.getMonth()+1) + '/' + p(n.getDate()) + ' ' + p(n.getHours()) + ':' + p(n.getMinutes());
     })();
 </script>
+
+<!-- 下書き・送信履歴 -->
+<div class="top-tools">
+    <div class="draft-banner" id="draft-banner" hidden>
+        <div class="msg">📝 入力途中の受注票があります<small id="draft-banner-time"></small></div>
+        <div class="banner-btns">
+            <button type="button" class="primary" onclick="resumeDraft()">続きから</button>
+            <button type="button" onclick="discardDraft()">破棄</button>
+        </div>
+    </div>
+    <div class="edit-banner" id="edit-banner" hidden>
+        <div class="msg">✏️ 訂正モード<small id="edit-banner-text"></small></div>
+        <div class="banner-btns"><button type="button" onclick="cancelEditing()">訂正をやめる</button></div>
+    </div>
+    <button type="button" class="hist-open" onclick="openHistory()">📋 送信履歴（見返す・コピー・訂正）<span class="hist-count"></span></button>
+</div>
 
 <!-- ① 種別 -->
 <div class="card">
@@ -939,6 +1010,7 @@
     <button class="send-btn" onclick="showPreview()">
         👁 &nbsp;内容を確認して送信
     </button>
+    <button type="button" class="hist-open" style="margin-top:10px;" onclick="openHistory()">📋 送信履歴<span class="hist-count"></span></button>
     <button class="reset-btn" onclick="resetForm()">
         🔄 &nbsp;フォームをリセット
     </button>
@@ -956,6 +1028,18 @@
     <div class="preview-actions">
         <button class="pv-edit" onclick="closePreview()">✏️ 修正する</button>
         <button class="pv-send" onclick="sendFromPreview()">📎 メールで送信</button>
+    </div>
+</div>
+
+<!-- 送信履歴 モーダル -->
+<div class="hist-overlay" id="hist-modal">
+    <div class="hist-sheet">
+        <div class="preview-header">
+            <span>📋 送信履歴</span>
+            <span class="preview-close" onclick="closeHistory()">✕</span>
+        </div>
+        <div class="hist-note">この端末で送信した受注票を、新しい順に最大50件残しています。他の人のスマホとは共有されません。</div>
+        <div class="hist-list" id="hist-list"></div>
     </div>
 </div>
 
@@ -1002,7 +1086,8 @@ function refreshDateTimeIfUntouched() {
     // 何か入力済みなら、入力中の値を消さないよう更新しない
     const touched =
         v('field-tokuisaki') || v('field-genba') || v('field-hachusha') ||
-        v('m1-hinmoku') || v('m1-kanri') || v('field-renraku');
+        v('m1-hinmoku') || v('m1-kanri') || v('field-renraku') ||
+        isIdouMode() || v('idou-from') || v('idou-to') || editingFrom;
     if (!touched) fillCurrentDateTime();
 }
 
@@ -1283,39 +1368,11 @@ document.addEventListener('DOMContentLoaded', restoreTantouInfo);
 // ═══════════════════════════════════════
 function resetForm() {
     if (!confirm('入力内容をすべてクリアしますか？')) return;
-
-    // テキスト入力・日付入力（日付欄が前回の選択のまま残ると誤入力の原因になるため一緒にクリア）
-    document.querySelectorAll('input[type="text"], input[type="date"], textarea').forEach(el => {
-        el.value = '';
-    });
-
-    // チェックボックス・ラジオ
-    document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(el => {
-        el.checked = false;
-    });
-
-    // 種別を「受注票」に戻す（移動モードなら通常表示に戻し、中継営業所も消す）
-    document.getElementById('btn-juchu').classList.add('active');
-    document.getElementById('btn-irai').classList.remove('active');
-    document.getElementById('btn-idou').classList.remove('active');
-    clearVia();
-    document.getElementById('idou-from').value = '';
-    document.getElementById('idou-to').value = '';
-    syncTypeField();
-    applyModeVisibility();
-
-    // 明細を初期化（品目1は残し、追加分のみ削除。入力値は上の処理でクリア済み）
-    document.querySelectorAll('#meisai-container .meisai-item').forEach(item => {
-        if (item.id !== 'meisai-1') item.remove();
-    });
-    meisaiCount = 1;
-
-    // 日時を現在時刻に更新
-    fillCurrentDateTime();
-
-    // 保存済みの担当者情報は毎回入力する手間を省くため復元する
-    restoreTantouInfo();
-
+    clearFormFields();
+    fillCurrentDateTime();           // 日時を現在時刻に更新
+    restoreTantouInfo();             // 保存済みの担当者情報は毎回入力する手間を省くため復元する
+    setEditing(null);
+    clearDraft();                    // 自分でクリアしたので、入力途中の保存も消す
     showToast('🔄 フォームをリセットしました');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -2007,7 +2064,7 @@ async function sendAsPdf() {
     const ymd = data.rcvYear && data.rcvMonth && data.rcvDay
         ? `${data.rcvYear}${data.rcvMonth.padStart(2,'0')}${data.rcvDay.padStart(2,'0')}`
         : (() => { const n=new Date(); return `${n.getFullYear()}${String(n.getMonth()+1).padStart(2,'0')}${String(n.getDate()).padStart(2,'0')}`; })();
-    let filename = [tokuisaki, data.isIdou ? '' : data.genba, ymd].filter(Boolean).join('_') + '.pdf';
+    let filename = [editingFrom ? '訂正' : '', tokuisaki, data.isIdou ? '' : data.genba, ymd].filter(Boolean).join('_') + '.pdf';
     filename = filename.replace(/[\/\\:*?"<>|]/g, '');
 
     // 帳票を画面内に一時配置してキャプチャ。
@@ -2075,6 +2132,7 @@ async function sendAsPdf() {
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
             try {
                 await navigator.share({ files: [file], title: subject, text: shareText });
+                onSent();
                 showToast('✅ 共有しました。メールアプリを選び、宛先を入力して送信してください');
                 return;
             } catch (err) {
@@ -2096,6 +2154,7 @@ async function sendAsPdf() {
         setTimeout(() => URL.revokeObjectURL(url), 15000);
 
         const body = `受注票PDFを送付します。\n\nファイル: ${filename}\n\n※ダウンロードされたPDFをこのメールに添付して送信してください。`;
+        onSent();
         window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
         showToast('✅ PDFを保存し、メール下書きを開きました。宛先を入力し、PDFを添付してください');
@@ -2407,6 +2466,374 @@ document.addEventListener('click', (e) => {
     const btn = e.target.closest('.mic-btn');
     if (btn) startDictation(btn);
 });
+
+// ═══════════════════════════════════════
+//  入力途中の自動保存（下書き）と送信履歴
+//  ※ 保存先はこの端末のブラウザ内のみ。サーバーへは一切送信しない。
+// ═══════════════════════════════════════
+const DRAFT_KEY = 'juchu-draft-v1';
+const HIST_KEY  = 'juchu-history-v1';
+const HIST_MAX  = 50;
+const MEISAI_KEYS = ['kanri', 'hinmoku', 'suryo', 'shutsuei', 'tekiyo', 'denpyo'];
+const SNAP_SKIP = new Set(['tantou-remember', 'field-type']);
+
+let snapRestoring = false;   // 復元中は自動保存しない
+let draftTimer = null;
+let draftDirty = false;
+let editingFrom = null;      // 履歴から「訂正」で呼び出した元の送信のid
+
+function lsRead(key, fallback) {
+    try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; }
+    catch (e) { return fallback; }
+}
+function lsWrite(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); return true; }
+    catch (e) { return false; }   // プライベートモードや容量不足でも動作は継続
+}
+
+// フォームの状態を丸ごと取り出す（明細と中継営業所は行数が変わるため別に持つ）
+function snapshotForm() {
+    const values = {}, checks = {};
+    document.querySelectorAll('input[id], textarea[id], select[id]').forEach(el => {
+        if (SNAP_SKIP.has(el.id) || el.closest('#preview-modal, #hist-modal')) return;
+        if (/^m\d+-/.test(el.id) || el.classList.contains('idou-via-sel')) return;
+        if (el.type === 'checkbox') checks[el.id] = el.checked;
+        else if (el.type !== 'radio' && el.type !== 'hidden') values[el.id] = el.value;
+    });
+    const meisai = [...document.querySelectorAll('#meisai-container .meisai-item')].map(item => {
+        const n = item.id.replace('meisai-', '');
+        const row = {};
+        MEISAI_KEYS.forEach(k => { row[k] = document.getElementById(`m${n}-${k}`)?.value || ''; });
+        return row;
+    });
+    const act = id => document.getElementById(id).classList.contains('active');
+    return {
+        v: 1,
+        type: { juchu: act('btn-juchu'), irai: act('btn-irai'), idou: act('btn-idou') },
+        values, checks,
+        unso: document.querySelector('input[name="unso"]:checked')?.value || '',
+        meisai,
+        via: [...document.querySelectorAll('.idou-via-sel')].map(s => s.value),
+    };
+}
+
+// 受付日時と記憶済みの担当者情報だけなら「入力なし」とみなす
+function snapHasContent(s) {
+    if (!s) return false;
+    if (s.type.irai || s.type.idou) return true;
+    const ignore = id => /^rcv-/.test(id) || TANTOU_FIELDS.includes(id);
+    if (Object.entries(s.values).some(([id, val]) => !ignore(id) && String(val).trim())) return true;
+    if (Object.values(s.checks).some(Boolean)) return true;
+    if (s.unso) return true;
+    if (s.meisai.some(r => MEISAI_KEYS.some(k => String(r[k] || '').trim()))) return true;
+    return (s.via || []).some(Boolean);
+}
+
+// フォームを空にする（リセット・復元の共通処理）
+function clearFormFields() {
+    // テキスト入力・日付入力（日付欄が前回の選択のまま残ると誤入力の原因になるため一緒にクリア）
+    document.querySelectorAll('input[type="text"], input[type="date"], textarea').forEach(el => { el.value = ''; });
+    document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(el => {
+        if (el.id !== 'tantou-remember') el.checked = false;
+    });
+    // 種別を「受注票」に戻す（移動モードなら通常表示に戻し、中継営業所も消す）
+    document.getElementById('btn-juchu').classList.add('active');
+    document.getElementById('btn-irai').classList.remove('active');
+    document.getElementById('btn-idou').classList.remove('active');
+    clearVia();
+    document.getElementById('idou-from').value = '';
+    document.getElementById('idou-to').value = '';
+    syncTypeField();
+    applyModeVisibility();
+    // 明細を初期化（品目1は残し、追加分のみ削除）
+    document.querySelectorAll('#meisai-container .meisai-item').forEach(item => {
+        if (item.id !== 'meisai-1') item.remove();
+    });
+    meisaiCount = 1;
+    hideHinmokuSuggest();
+}
+
+function updateHeaderDateTime() {
+    const p = x => String(x || '').padStart(2, '0');
+    const el = document.getElementById('header-datetime');
+    if (el && v('rcv-year')) {
+        el.textContent = `受付 ${v('rcv-year')}/${p(v('rcv-month'))}/${p(v('rcv-day'))} ${p(v('rcv-hour'))}:${p(v('rcv-min'))}`;
+    }
+}
+
+// mode: 'exact' = そのまま復元（続きから・訂正） / 'copy' = 日付類を空にして新しい受注として作る
+function restoreForm(s, mode) {
+    snapRestoring = true;
+    try {
+        clearFormFields();
+        const btn = { juchu: 'btn-juchu', irai: 'btn-irai', idou: 'btn-idou' };
+        Object.entries(btn).forEach(([k, id]) => document.getElementById(id).classList.toggle('active', !!s.type[k]));
+        if (!s.type.juchu && !s.type.irai && !s.type.idou) document.getElementById('btn-juchu').classList.add('active');
+        syncTypeField();
+        applyModeVisibility();
+
+        Object.entries(s.values).forEach(([id, val]) => {
+            const el = document.getElementById(id);
+            if (el && !/^m\d+-/.test(id)) el.value = val;
+        });
+        Object.entries(s.checks).forEach(([id, on]) => {
+            const el = document.getElementById(id);
+            if (el && el.type === 'checkbox' && id !== 'tantou-remember') el.checked = !!on;
+        });
+        if (s.unso) {
+            const r = [...document.querySelectorAll('input[name="unso"]')].find(x => x.value === s.unso);
+            if (r) r.checked = true;
+        }
+        (s.meisai.length ? s.meisai : [{}]).forEach((row, i) => {
+            if (i > 0) addMeisai();
+            const n = meisaiCount;
+            MEISAI_KEYS.forEach(k => {
+                const el = document.getElementById(`m${n}-${k}`);
+                if (el) el.value = row[k] || '';
+            });
+        });
+        (s.via || []).forEach(val => {
+            addVia();
+            const sels = document.querySelectorAll('.idou-via-sel');
+            sels[sels.length - 1].value = val;
+        });
+
+        if (mode === 'copy') {
+            // 同じ客先・現場の追加注文用：日付・時間帯・伝票番号は新しい受注のものを入れ直してもらう
+            ['ship-date', 'ship-hour', 'ship-min', 'use-start', 'use-end', 'field-henkyaku',
+             'idou-load-date', 'idou-load-hour', 'idou-load-min', 'idou-arr-date', 'idou-arr-hour', 'idou-arr-min']
+                .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            ['hisshu', 'kyochu', 'am-chu', 'pm-chu', 'ship-koro', 'ship-mitei']
+                .forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
+            document.querySelectorAll('input[type="checkbox"][id^="idou-load-"], input[type="checkbox"][id^="idou-arr-"]')
+                .forEach(el => { el.checked = false; });
+            document.querySelectorAll('[id$="-denpyo"]').forEach(el => { el.value = ''; });
+            fillCurrentDateTime();
+        } else {
+            updateHeaderDateTime();
+        }
+    } finally {
+        snapRestoring = false;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ─── 下書き ───
+function scheduleDraftSave() {
+    if (snapRestoring) return;
+    draftDirty = true;
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(saveDraft, 600);
+}
+function saveDraft() {
+    clearTimeout(draftTimer);
+    if (!draftDirty || snapRestoring) return;
+    draftDirty = false;
+    const snap = snapshotForm();
+    if (!snapHasContent(snap)) {
+        try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+        return;
+    }
+    lsWrite(DRAFT_KEY, { savedAt: Date.now(), editingFrom, snap });
+}
+function clearDraft() {
+    clearTimeout(draftTimer);
+    draftDirty = false;
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+}
+
+// 利用者が何か操作したら下書きを保存する（前回の下書きの案内は、新しく入力を始めたら閉じる）
+function onUserEdit(e) {
+    if (snapRestoring || !e.target.closest) return;
+    if (e.target.closest('#preview-modal, #hist-modal, #draft-banner, #edit-banner, #tantou-remember')) return;
+    const banner = document.getElementById('draft-banner');
+    if (banner && !banner.hidden) banner.hidden = true;
+    scheduleDraftSave();
+}
+document.addEventListener('input', onUserEdit, true);
+document.addEventListener('change', onUserEdit, true);
+document.addEventListener('click', e => {
+    // 種別の切替・明細や中継の追加削除は入力イベントが出ないため、ボタン操作でも保存する
+    if (e.target.closest && e.target.closest('.type-btn, .add-meisai-btn, .add-via-btn, .via-del, [onclick*="addMeisai"], [onclick*="removeMeisai"]')) onUserEdit(e);
+}, true);
+document.addEventListener('pointerup', e => {
+    if (e.target.closest && e.target.closest('#hinmoku-ac')) setTimeout(scheduleDraftSave, 0);   // 品名候補の選択
+}, true);
+// アプリを閉じる・別アプリに切り替える瞬間にも保存する
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveDraft(); });
+window.addEventListener('pagehide', saveDraft);
+
+function fmtStamp(t) {
+    const d = new Date(t), p = x => String(x).padStart(2, '0');
+    const y = d.getFullYear() !== new Date().getFullYear() ? `${d.getFullYear()}/` : '';
+    return `${y}${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${p(d.getMinutes())}`;
+}
+
+function resumeDraft() {
+    const d = lsRead(DRAFT_KEY, null);
+    document.getElementById('draft-banner').hidden = true;
+    if (!d || !d.snap) return;
+    restoreForm(d.snap, 'exact');
+    setEditing(d.editingFrom || null);
+    showToast('📝 入力途中の内容を復元しました');
+}
+function discardDraft() {
+    clearDraft();
+    document.getElementById('draft-banner').hidden = true;
+    showToast('🗑 入力途中の内容を破棄しました');
+}
+
+// ─── 送信履歴 ───
+function loadHistory() {
+    const h = lsRead(HIST_KEY, []);
+    return Array.isArray(h) ? h : [];
+}
+function saveHistoryList(h) {
+    h = h.slice(0, HIST_MAX);
+    while (h.length && !lsWrite(HIST_KEY, h)) h.pop();   // 容量不足のときは古いものから削って保存
+    if (!h.length) { try { localStorage.removeItem(HIST_KEY); } catch (e) {} }
+    updateHistCount();
+}
+function addHistory(snap) {
+    const h = loadHistory();
+    h.unshift({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        sentAt: Date.now(),
+        correctionOf: editingFrom || null,
+        snap,
+    });
+    saveHistoryList(h);
+}
+
+// 送信が完了したとき（共有を選んだ／メール下書きを開いた）に呼ぶ
+function onSent() {
+    addHistory(snapshotForm());
+    setEditing(null);
+    clearDraft();
+}
+
+function histSummary(s) {
+    const val = id => String(s.values[id] || '').trim();
+    const kinds = s.type.idou ? '移動'
+        : [s.type.juchu && '受注票', s.type.irai && '依頼書'].filter(Boolean).join('・') || '受注票';
+    const main = s.type.idou
+        ? [val('idou-from'), ...(s.via || []).filter(Boolean), val('idou-to')].filter(Boolean).join(' → ') || '（営業所の指定なし）'
+        : val('field-tokuisaki') || '（得意先名なし）';
+    const site = s.type.idou ? '' : val('field-genba');
+    const items = s.meisai.map(r => String(r.hinmoku || '').trim()).filter(Boolean);
+    const itemText = items.length ? items[0] + (items.length > 1 ? ` 他${items.length - 1}件` : '') : '';
+    return { kinds, main, sub: [site, itemText].filter(Boolean).join(' ／ ') };
+}
+
+function updateHistCount() {
+    const n = loadHistory().length;
+    document.querySelectorAll('.hist-count').forEach(el => { el.textContent = n ? `${n}件` : ''; });
+}
+
+function renderHistory() {
+    const list = document.getElementById('hist-list');
+    const h = loadHistory();
+    list.innerHTML = '';
+    if (!h.length) {
+        const empty = document.createElement('div');
+        empty.className = 'hist-empty';
+        empty.textContent = 'まだ送信した受注票はありません。送信するとここに自動で残ります。';
+        list.appendChild(empty);
+        return;
+    }
+    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    h.forEach(ent => {
+        const sm = histSummary(ent.snap);
+        const item = mk('div', 'hist-item');
+        const top = mk('div', 'hist-top');
+        top.appendChild(mk('span', 'hist-date', fmtStamp(ent.sentAt) + ' 送信'));
+        top.appendChild(mk('span', 'hist-kind' + (ent.snap.type.idou ? ' idou' : ''), sm.kinds));
+        if (ent.correctionOf) top.appendChild(mk('span', 'hist-kind fix', '訂正'));
+        item.appendChild(top);
+        item.appendChild(mk('div', 'hist-main', sm.main));
+        if (sm.sub) item.appendChild(mk('div', 'hist-sub', sm.sub));
+        const btns = mk('div', 'hist-btns');
+        const b = (label, cls, act) => { const x = mk('button', cls, label); x.type = 'button'; x.dataset.act = act; x.dataset.id = ent.id; btns.appendChild(x); };
+        b('📄 コピーして新規', 'hist-copy', 'copy');
+        b('✏️ 呼び出して訂正', 'hist-edit', 'edit');
+        b('削除', 'hist-del', 'del');
+        item.appendChild(btns);
+        list.appendChild(item);
+    });
+}
+
+function openHistory() {
+    hideHinmokuSuggest();
+    renderHistory();
+    document.getElementById('hist-modal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+function closeHistory() {
+    document.getElementById('hist-modal').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+function confirmReplaceForm() {
+    return !snapHasContent(snapshotForm()) || confirm('入力中の内容は消えます。よろしいですか？');
+}
+
+document.getElementById('hist-list').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    const ent = loadHistory().find(x => x.id === btn.dataset.id);
+    if (!ent) return;
+    if (btn.dataset.act === 'del') {
+        if (!confirm('この履歴を削除しますか？')) return;
+        saveHistoryList(loadHistory().filter(x => x.id !== ent.id));
+        if (editingFrom === ent.id) setEditing(null);
+        renderHistory();
+        return;
+    }
+    if (!confirmReplaceForm()) return;
+    if (btn.dataset.act === 'copy') {
+        restoreForm(ent.snap, 'copy');
+        setEditing(null);
+        closeHistory();
+        showToast('📄 前回の内容をコピーしました。日付を入れてください');
+    } else {
+        restoreForm(ent.snap, 'exact');
+        setEditing(ent.id);
+        closeHistory();
+        showToast('✏️ 修正して送信すると、件名に「訂正」が付きます');
+    }
+    scheduleDraftSave();   // 呼び出した内容も途中保存の対象にする
+});
+document.getElementById('hist-modal').addEventListener('click', e => {
+    if (e.target.id === 'hist-modal') closeHistory();   // 背景を押したら閉じる
+});
+
+// ─── 訂正中の表示 ───
+function setEditing(id) {
+    editingFrom = id || null;
+    const banner = document.getElementById('edit-banner');
+    if (!banner) return;
+    if (!editingFrom) { banner.hidden = true; return; }
+    const ent = loadHistory().find(x => x.id === editingFrom);
+    document.getElementById('edit-banner-text').textContent =
+        ent ? `${fmtStamp(ent.sentAt)} に送信した受注票を訂正中です` : '送信済みの受注票を訂正中です';
+    banner.hidden = false;
+}
+function cancelEditing() {
+    setEditing(null);
+    scheduleDraftSave();
+    showToast('訂正をやめました（入力内容はそのまま残ります）');
+}
+
+// ─── 起動時：前回の入力途中があれば案内する ───
+(function initDraftAndHistory() {
+    updateHistCount();
+    const d = lsRead(DRAFT_KEY, null);
+    if (d && d.snap && snapHasContent(d.snap)) {
+        document.getElementById('draft-banner-time').textContent = `${fmtStamp(d.savedAt)} に自動保存` +
+            (d.editingFrom ? '（訂正中）' : '');
+        document.getElementById('draft-banner').hidden = false;
+    }
+})();
 
 // ═══════════════════════════════════════
 //  PWA登録（オフライン起動・ホーム画面フルスクリーン対応）
