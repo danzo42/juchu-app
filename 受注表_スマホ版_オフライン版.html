@@ -620,7 +620,8 @@
             <label class="checkbox-item"><input type="checkbox" id="kubun-4" value="Wレンタル"> Wレンタル</label>
             <label class="checkbox-item"><input type="checkbox" id="kubun-5" value="引取"> 引取</label>
             <label class="checkbox-item"><input type="checkbox" id="kubun-7" value="移動"> 移動</label>
-            <label class="checkbox-item"><input type="checkbox" id="kubun-6" value="修理他"> 修理他</label>
+            <label class="checkbox-item"><input type="checkbox" id="kubun-6" value="修理"> 修理</label>
+            <label class="checkbox-item"><input type="checkbox" id="kubun-8" value="他"> 他</label>
         </div>
     </div>
 </div>
@@ -1359,7 +1360,8 @@ function collectFormData() {
         { id:'kubun-4', label:'Wレンタル(注文書)' },
         { id:'kubun-5', label:'引取' },
         { id:'kubun-7', label:'移動' },
-        { id:'kubun-6', label:'修理他' },
+        { id:'kubun-6', label:'修理' },
+        { id:'kubun-8', label:'他' },
     ].map(k => ({
         ...k,
         checked: isIdou ? (k.id === 'kubun-7') : !!document.getElementById(k.id)?.checked
@@ -1429,236 +1431,360 @@ function collectFormData() {
 }
 
 // ═══════════════════════════════════════
-//  帳票HTML生成（A5横・インラインスタイル）
+//  帳票HTML生成（会社の原本書式を再現：A5横 210×148mm）
+//  罫線・文字の位置は原本スキャンから計測したmmで、受注票MK2（PC版）と同じ座標を使う。
+//  区分・運送便・必着/今日中・書類は、原本どおり「○で囲む」形で出力する。
 // ═══════════════════════════════════════
+const KEIJO_LOGO = 'data:image/png;base64,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';
+const KEIJO_ROWS = 7;   // 原本の明細行数
+const KEIJO_FONT = "'BIZ UDPGothic','Yu Gothic UI','Meiryo','Hiragino Sans','Noto Sans JP','Noto Sans CJK JP',sans-serif";
+
 function buildKeijoHTML(d) {
-    const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const chk = b => b ? '☑' : '□';
-    // 氏名欄に敬称を自動付与（未入力なら空欄のまま。既に「様」で終わる場合は二重付与しない）
+    const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const mm = v => (+v.toFixed(3)) + 'mm';
+
+    // 氏名に敬称を付ける（未入力なら空欄、既に「様」「御中」で終わる場合は付けない）
     const sama = s => {
-        const t = (s || '').trim();
+        const t = String(s || '').trim();
         if (!t) return '';
-        return esc(t) + (/(様|御中)$/.test(t) ? '' : ' 様');
+        return /(様|御中)$/.test(t) ? t : t + ' 様';
     };
-    // 依頼営欄は担当者名が入る場合と営業所名が入る場合があるため、
-    // 営業所一覧に載っている名前（長岡・金沢中央 等）や組織名らしい語尾のときは敬称を付けない
+    // 依頼営欄は担当者名が入る場合と営業所名が入る場合があるため、営業所名には敬称を付けない
     const samaIfPerson = s => {
-        const t = (s || '').trim();
+        const t = String(s || '').trim();
         if (!t) return '';
-        if (EIGYOSHO_NAMES.has(t)) return esc(t);
-        if (/(営|営業所|支店|店|課|部|センター)$/.test(t)) return esc(t);
+        if (EIGYOSHO_NAMES.has(t) || /(営|営業所|支店|店|課|部|センター)$/.test(t)) return t;
         return sama(t);
     };
-    const G = '#16a34a', GD = '#14532d', GR = '#f0fdf4', BG = '#f3f4f6';
-    const td = (w, content, opts = {}) => {
-        const bg = opts.head ? `background:${BG};` : '';
-        const align = opts.center ? 'text-align:center;' : '';
-        const fs = opts.fs || '13px';   // FAX送信時に読み取れるよう拡大（11px→13px）
-        const span = opts.colspan ? `colspan="${opts.colspan}"` : '';
-        return `<td ${span} style="border:1px solid ${G};padding:2px 4px;font-size:${fs};${bg}${align}width:${w};">${content}</td>`;
+    // 「9/15」→ ['9','15']（原本は月と日の欄が分かれているため）
+    const md = s => {
+        const m = String(s || '').match(/^(\d{1,2})\/(\d{1,2})$/);
+        return m ? [m[1], m[2]] : ['', ''];
+    };
+    const kubun = id => !!d.allKubun.find(k => k.id === id)?.checked;
+
+    // ─── 部品（座標はすべてmm。罫線は線の中心で指定） ───
+    const hline = (x1, x2, y, t = 0.15) =>
+        `<div class="k-ln" style="left:${mm(x1)};top:${mm(y - t / 2)};width:${mm(x2 - x1)};height:${mm(t)}"></div>`;
+    const vline = (x, y1, y2, t = 0.15) =>
+        `<div class="k-ln" style="left:${mm(x - t / 2)};top:${mm(y1)};width:${mm(t)};height:${mm(y2 - y1)}"></div>`;
+    const rect = (x1, y1, x2, y2, t = 0.3) =>
+        `<div class="k-bx" style="left:${mm(x1 - t / 2)};top:${mm(y1 - t / 2)};width:${mm(x2 - x1 + t)};height:${mm(y2 - y1 + t)};border-width:${mm(t)}"></div>`;
+    // 原本は等幅書体のため、見出しを均等割付して同じ幅に揃える
+    const spread = text => [...text].map(ch => `<span>${esc(ch)}</span>`).join('');
+    const label = (text, x, cy, fs, o = {}) => {
+        let st = `left:${mm(x)};top:${mm(cy - fs / 2)};font-size:${mm(fs)};height:${mm(fs)}`;
+        if (o.weight) st += `;font-weight:${o.weight}`;
+        let cls = 'k-lb';
+        if (o.w) { st += `;width:${mm(o.w)}`; cls += o.spread ? ' k-sp' : ' k-ct'; }
+        return `<div class="${cls}" style="${st}">${o.spread ? spread(text) : esc(text)}</div>`;
+    };
+    // ○で囲む項目
+    const ring = (on, text, x, cy, fs, px = 0.9, py = 0.8) =>
+        `<div class="k-tg${on ? ' k-on' : ''}" style="left:${mm(x)};top:${mm(cy - fs / 2)};font-size:${mm(fs)};height:${mm(fs)}">` +
+        `${esc(text)}<div class="k-ring" style="left:${mm(-px)};right:${mm(-px)};top:${mm(-py)};bottom:${mm(-py)}"></div></div>`;
+    // □チェック（受注票・依頼書・Wレンタル）
+    const check = (on, x, y, size, text, tx, tw, cy, fs) =>
+        `<div class="k-tg k-ck${on ? ' k-on' : ''}" style="left:${mm(x)};top:${mm(y)};width:${mm(size)};height:${mm(size)}"><div class="k-mark"></div></div>` +
+        `<div class="k-tg k-sp" style="left:${mm(tx)};top:${mm(cy - fs / 2)};width:${mm(tw)};font-size:${mm(fs)};height:${mm(fs)};font-weight:700">${spread(text)}</div>`;
+    // 記入内容。入りきらない文字は fitKeijo() が min まで自動で縮める
+    const field = (text, x, y, w, h, o = {}) => {
+        const fs = o.fs || 3.4;
+        const cls = 'k-fld ' + (o.wrap ? 'k-wrap' : 'k-one') + (o.center ? ' k-c' : '') + (o.top ? ' k-top' : '');
+        return `<div class="${cls}" data-w="${w}" data-h="${h}" data-fs="${fs}" data-min="${o.min || fs}" data-one="${o.one || fs}"` +
+               ` style="left:${mm(x)};top:${mm(y)};width:${mm(w)};height:${mm(h)};font-size:${mm(fs)}">${esc(text)}</div>`;
     };
 
-    // 移動のときは、現行の帳票様式のまま該当欄に営業所と積込／到着を入れる。
-    // 欄名（得意先名・現場名）と中身が違うため、角括弧で何の情報かを明示する。
-    // 「AM中」などが行の途中で分断されないよう、項目ごとに折り返しを禁止する
-    const nw = s => `<span style="white-space:nowrap;">${s}</span>`;
-    const idouTime = (t) => {
-        const hm = t.hour ? `${esc(t.hour)}:${esc(String(t.min || '0').padStart(2, '0'))}` : '';
-        // 日付が未定のときは日付欄に（未定）と出し、確定日かどうかを一目で分かるようにする
-        const base = [esc(t.date), hm].filter(Boolean).join(' ');
-        const head = t.mitei ? `${base}（未定）`.trim() : base;
-        const flags = [t.hisshu && '必着', t.kyo && '今日中', t.am && 'AM中',
-                       t.pm && 'PM中', t.koro && '頃'].filter(Boolean).map(nw).join(' ');
-        return [head ? nw(head) : '', flags].filter(Boolean).join('　');
-    };
-    const idouLoadStr = d.isIdou ? idouTime(d.idouLoad) : '';
-    const idouArrStr  = d.isIdou ? idouTime(d.idouArr)  : '';
+    // ─── 記入内容の組み立て ───
+    const timeFlags = t => [t.am && 'AM中', t.pm && 'PM中', t.koro && '頃', t.mitei && '未定'].filter(Boolean).join('・');
 
-    // 「頃」「未定」は日付の直後に続けて、確定日かどうかが一目で分かるようにする
-    const shipDateStr = d.shipMonth
-        ? `${d.shipMonth} 月 ${d.shipDay} 日${d.shipKoro ? ' 頃' : ''}`
-        : (d.shipMitei ? '' : '');
-    const shipStr = [
-        d.shipMitei ? `${shipDateStr || ''}（未定）`.trim() : shipDateStr,
-        d.shipHour  ? `${esc(d.shipHour)} 時 ${esc(d.shipMin||'0')} 分` : '',
-        `${chk(d.hisshu)}必着`,
-        `${chk(d.kyochu)}今日中`,
-        `${chk(d.amChu)}AM中`,
-        `${chk(d.pmChu)}PM中`,
-    ].filter(Boolean).map(nw).join('　');
+    let tokuisaki, hacchusha, genba, shipM, shipD, shipH, shipMin, shipNote, hisshu, kyochu;
+    let useM = '', useD = '', retM = '', retD = '';
+    const bikoLines = [];
 
-    // 明細は6件ごとにページ分割（7品目目から2ページ目…）
-    const ROWS_PER_PAGE = 6;
-    const items = d.meisaiItems || [];
-    const pageCount = Math.max(1, Math.ceil(items.length / ROWS_PER_PAGE));
+    if (d.isIdou) {
+        // 営業所間移動：客先欄に出発、現場欄に到着（と経由）を入れ、欄名と中身の違いを［］で示す
+        tokuisaki = d.idouFrom ? `［出発］${d.idouFrom}` : '';
+        hacchusha = '';
+        genba = (d.idouTo ? `［到着］${d.idouTo}` : '') +
+                (d.idouVia.length ? `（経由 ${d.idouVia.join('→')}）` : '');
+        [shipM, shipD] = md(d.idouLoad.date);
+        shipH = d.idouLoad.hour;
+        shipMin = d.idouLoad.hour ? d.idouLoad.min : '';
+        shipNote = timeFlags(d.idouLoad);
+        hisshu = d.idouLoad.hisshu;
+        kyochu = d.idouLoad.kyo;
+        // 原本に到着の記入欄は無いため、備考の先頭に記載する
+        const a = d.idouArr;
+        const arrive = [a.date, a.hour ? `${a.hour}:${String(a.min || '0').padStart(2, '0')}` : '',
+                        a.hisshu && '必着', a.kyo && '今日中', a.am && 'AM中', a.pm && 'PM中',
+                        a.koro && '頃', a.mitei && '未定'].filter(Boolean).join(' ');
+        if (arrive) bikoLines.push(`【到着】${arrive}`);
+    } else {
+        tokuisaki = d.tokuisaki;
+        hacchusha = sama(d.hachusha);
+        genba = d.genba;
+        shipM = d.shipMonth; shipD = d.shipDay;
+        shipH = d.shipHour;  shipMin = d.shipHour ? d.shipMin : '';
+        shipNote = timeFlags({ am: d.amChu, pm: d.pmChu, koro: d.shipKoro, mitei: d.shipMitei });
+        hisshu = d.hisshu; kyochu = d.kyochu;
+        // 原本の「使用開始（終了）」欄は1つだけのため、開始を優先し、両方あれば終了を備考に書く
+        [useM, useD] = md(d.useStart || d.useEnd);
+        if (d.useStart && d.useEnd) bikoLines.push(`使用終了 ${d.useEnd}`);
+        [retM, retD] = md(d.henkyaku);
+    }
+    if (d.renraku) bikoLines.push(d.renraku);
+    const biko = bikoLines.join('\n');
 
-    // 1ページ分の明細6行を生成
-    const meisaiRowsFor = (pageIdx) => {
-        let rows = '';
-        for (let r = 0; r < ROWS_PER_PAGE; r++) {
-            const it = items[pageIdx * ROWS_PER_PAGE + r] || {};
-            rows += `<tr style="height:43px;">
-                <td style="border:1px solid ${G};padding:1px 3px;font-size:13.5px;">${esc(it.kanri)}</td>
-                <td style="border:1px solid ${G};padding:1px 3px;font-size:13.5px;line-height:1.25;">${esc(it.hinmoku)}</td>
-                <td style="border:1px solid ${G};padding:1px 3px;font-size:13.5px;text-align:center;">${esc(it.suryo)}</td>
-                <td style="border:1px solid ${G};padding:1px 3px;font-size:13.5px;text-align:center;">${esc(it.shutsuei)}</td>
-                <td style="border:1px solid ${G};padding:1px 3px;font-size:11px;">${esc(it.tekiyo)}</td>
-                <td style="border:1px solid ${G};padding:1px 3px;font-size:11px;">${esc(it.denpyo)}</td>
-            </tr>`;
-        }
-        return rows;
-    };
+    const items = d.meisaiItems;
+    const pageCount = Math.max(1, Math.ceil(items.length / KEIJO_ROWS));
 
-    // 1ページ分の帳票（pageIdx は0始まり）
     const onePage = (pageIdx) => {
-        const footer = pageCount > 1
-            ? `営F-21 1　（${pageIdx + 1} / ${pageCount}）`
-            : '営F-21 1';
-        return `<div class="keijo-page" style="width:210mm;height:148mm;padding:3mm 7mm;background:#ffffff;overflow:hidden;position:relative;font-family:'Hiragino Sans','Hiragino Kaku Gothic ProN',Meiryo,sans-serif;color:#000;">
+        let h = '';
 
-  <!-- ヘッダー -->
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;gap:6px;">
-    <div style="flex:1 1 auto;min-width:0;">
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:3px;font-size:13px;font-weight:bold;">
-        <span>${chk(d.typeJuchu)} 受注票</span>
-        <span>${chk(d.typeIrai)} 依頼書</span>
-      </div>
-      <div style="font-size:11px;display:flex;gap:4px 8px;flex-wrap:wrap;">
-        ${d.allKubun.map(k=>`<span style="white-space:nowrap;">${chk(k.checked)}${k.label}</span>`).join('')}
-      </div>
-    </div>
-    <div style="flex:0 0 auto;text-align:right;">
-      <div style="font-size:17px;font-weight:bold;color:${GD};letter-spacing:1px;white-space:nowrap;">株式会社 ヨシカワ</div>
-      <div style="font-size:9px;color:${GD};margin-top:3px;white-space:nowrap;">
-        【受付日 ${esc(d.rcvYear)}年 ${esc(d.rcvMonth)}月 ${esc(d.rcvDay)}日 ${esc(d.rcvHour)}時 ${esc(d.rcvMin)}分】
-      </div>
-    </div>
-  </div>
+        // ── 上段：□受注票 □依頼書 □Wレンタル(注文書)・社名 ──
+        h += check(d.typeJuchu,    11.3, 7.6, 4.2, '受注票',             18.8, 14.5, 9.85, 4.85);
+        h += check(d.typeIrai,     38.9, 7.6, 4.2, '依頼書',             46.1, 14.6, 9.85, 4.85);
+        h += check(kubun('kubun-4'), 80.1, 7.6, 4.2, 'Wレンタル（注文書）', 87.4, 44.1, 9.85, 4.85);
+        h += `<img class="k-logo" src="${KEIJO_LOGO}" alt="株式会社ヨシカワ" style="left:${mm(157.79)};top:${mm(6.18)};width:${mm(43.61)};height:${mm(6.73)}">`;
 
-  <!-- 顧客情報 -->
-  <table style="margin-bottom:2px;">
-    <tr>
-      ${td('12%','得意先名',{head:true,center:true})}
-      ${td('25%', d.isIdou ? `［出発］${esc(d.idouFrom)}` : esc(d.tokuisaki))}
-      ${td('10%','発注者',{head:true,center:true})}
-      ${td('18%', d.isIdou ? '' : sama(d.hachusha))}
-      ${td('15%','連絡先',{head:true,center:true})}
-      ${td('20%',esc(d.renrakusaki))}
-    </tr>
-    <tr>
-      ${td('12%','現場名',{head:true,center:true})}
-      <td colspan="3" style="border:1px solid ${G};padding:2px 4px;font-size:13px;">${
-        d.isIdou
-          ? `［到着］${esc(d.idouTo)}${d.idouVia.length ? `　（経由 ${esc(d.idouVia.join(' → '))}）` : ''}`
-          : esc(d.genba)
-      }</td>
-      <td style="border:1px solid ${G};padding:2px 4px;font-size:10px;text-align:center;width:15%;background:${BG};">
-        運送便<br>
-        <span style="font-size:10px;">${chk(d.unso==='自')}自　${chk(d.unso==='他')}他　${chk(d.unso==='傭')}傭</span>
-      </td>
-      ${td('20%',esc(d.unsoDetail),{center:true})}
-    </tr>
-  </table>
+        // ── 区分（○で囲む）・受付日 ──
+        const KY = 17.5, KF = 3.4;
+        [['kubun-1', '貸出来店', 11.2], ['kubun-2', '返却来店', 31.1], ['kubun-3', '配達', 51.5],
+         ['kubun-5', '引取', 64.5], ['kubun-7', '移動', 77.8], ['kubun-6', '修理', 90.8], ['kubun-8', '他', 103.9]]
+            .forEach(([id, t, x]) => { h += ring(kubun(id), t, x, KY, KF, t.length === 1 ? 0.8 : 1.0, 0.8); });
+        h += label('【受付日', 116.6, KY, KF);
+        h += label('年', 139.8, KY, KF);
+        h += label('月', 154.0, KY, KF);
+        h += label('日', 168.1, KY, KF);
+        h += label('時', 182.0, KY, KF);
+        h += label('分】', 196.0, KY, KF);
+        const RF = { fs: 3.4, min: 2.4, center: true };
+        h += field(d.rcvYear,  129.3, 15.2, 10.3, 4.6, RF);
+        h += field(d.rcvMonth, 143.3, 15.2, 10.5, 4.6, RF);
+        h += field(d.rcvDay,   157.4, 15.2, 10.5, 4.6, RF);
+        h += field(d.rcvHour,  171.3, 15.2, 10.5, 4.6, RF);
+        h += field(d.rcvMin,   185.2, 15.2, 10.6, 4.6, RF);
 
-  <!-- 日程 -->
-  <table style="margin-bottom:2px;">
-    <tr>
-      ${td('11%', d.isIdou ? '積込(出発)日' : '出荷(入荷)日', {head:true,center:true,fs:'10px'})}
-      <td style="border:1px solid ${G};padding:2px 6px;width:39%;font-size:12px;">${d.isIdou ? idouLoadStr : shipStr}</td>
-      ${td('14%', d.isIdou ? '到着日' : '使用開始(終了)', {head:true,center:true,fs:'10px'})}
-      <td style="border:1px solid ${G};padding:2px 4px;text-align:center;width:15%;font-size:12px;">${
-        d.isIdou ? idouArrStr : `${esc(d.useStart)} / ${esc(d.useEnd)}`
-      }</td>
-      ${td('9%','返却予定',{head:true,center:true,fs:'10px'})}
-      <td style="border:1px solid ${G};padding:2px 4px;font-size:11px;text-align:center;width:12%;">${d.isIdou ? '' : esc(d.henkyaku)}</td>
-    </tr>
-  </table>
+        // ── 得意先・現場・日程の枠 ──
+        h += rect(10.9, 20.1, 201.0, 46.1, 0.3);
+        h += hline(10.9, 201.0, 28.7);
+        h += hline(10.9, 201.0, 37.5);
+        [26.4, 92.0, 107.5, 143.9, 154.0].forEach(x => { h += vline(x, 20.1, 28.7); });
+        [26.4, 92.0, 107.5, 124.5].forEach(x => { h += vline(x, 28.7, 37.5); });
+        [26.4, 83.5, 140.0, 154.0, 170.5, 184.6].forEach(x => { h += vline(x, 37.5, 46.1); });
 
-  <!-- 明細 -->
-  <table style="margin-bottom:2px;">
-    <thead>
-      <tr style="background:${BG};font-size:11.5px;text-align:center;">
-        <th style="border:1px solid ${G};padding:2px;width:13%;">管理番号</th>
-        <th style="border:1px solid ${G};padding:2px;width:37%;">品目（メーカー・品名・規格）</th>
-        <th style="border:1px solid ${G};padding:2px;width:8%;">数量</th>
-        <th style="border:1px solid ${G};padding:2px;width:8%;">出営</th>
-        <th style="border:1px solid ${G};padding:2px;width:17%;">摘要</th>
-        <th style="border:1px solid ${G};padding:2px;width:17%;">伝票番号</th>
-      </tr>
-    </thead>
-    <tbody>${meisaiRowsFor(pageIdx)}</tbody>
-  </table>
+        const R1 = 24.4, R2 = 33.1, R3 = 41.8;
+        h += label('得意先名', 12.1, R1, 3.3, { w: 13.3, spread: true });
+        h += label('発注者',   93.3, R1, 3.3, { w: 13.1, spread: true });
+        h += label('連絡先',  145.0, R1, 2.7, { w: 8.2, spread: true });
+        h += label('現場名',   12.1, R2, 3.3, { w: 13.3, spread: true });
+        h += label('運送便',   93.3, R2, 3.3, { w: 13.1, spread: true });
+        h += ring(d.unso === '自', '自', 108.9, R2, 2.92, 0.7, 0.7);
+        h += label('・', 111.8, R2, 2.92);
+        h += ring(d.unso === '他', '他', 114.7, R2, 2.92, 0.7, 0.7);
+        h += label('・', 117.6, R2, 2.92);
+        h += ring(d.unso === '傭', '傭', 120.5, R2, 2.92, 0.7, 0.7);
+        h += label('出荷(入荷)日', 10.9, R3, 2.35, { w: 15.5 });
+        h += label('月', 37.7, R3, 3.0);
+        h += label('日', 51.5, R3, 3.0);
+        h += label('時', 65.2, R3, 3.0);
+        h += label('分', 79.4, R3, 3.0);
+        h += ring(hisshu, '必着', 84.7, R3, 3.45, 0.9, 0.8);
+        h += label('・', 91.6, R3, 3.45);
+        h += ring(kyochu, '今日中', 95.1, R3, 3.45, 0.9, 0.8);
+        h += label('使用開始', 140.0, 39.9, 3.0, { w: 14.0 });
+        h += label('（終了）', 140.0, 43.8, 3.0, { w: 14.0 });
+        h += label('/', 154.0, R3, 3.2, { w: 16.5 });
+        h += label('返却', 172.8, 39.9, 2.9, { w: 9.7, spread: true });
+        h += label('予定', 172.8, 43.8, 2.9, { w: 9.7, spread: true });
+        h += label('/', 184.6, R3, 3.2, { w: 16.4 });
 
-  <!-- 書類 -->
-  <div style="border:1px solid ${G};padding:2px 6px;margin-bottom:3px;display:flex;align-items:center;gap:10px;font-size:10px;flex-wrap:wrap;">
-    <span style="font-weight:bold;">書類</span>
-    <span>${chk(d.docHaigas)} 排ガス</span>
-    <span>${chk(d.docTokuji)} 特自検</span>
-    <span>${chk(d.docTeiki)} 定期検</span>
-    <span>${chk(d.docShaken)} 車検</span>
-    <span style="margin-left:auto;">その他( ${esc(d.docOther)} )</span>
-  </div>
+        h += field(tokuisaki,       26.8, 20.4, 64.9, 8.0, { fs: 4.0, min: 2.2, one: 3.0, wrap: true });
+        h += field(hacchusha,      107.9, 20.4, 35.7, 8.0, { fs: 3.6, min: 2.0, one: 2.8, wrap: true });
+        h += field(d.renrakusaki,  154.3, 20.4, 46.4, 8.0, { fs: 3.6, min: 2.0 });
+        h += field(genba,           26.8, 29.0, 64.9, 8.2, { fs: 4.0, min: 2.2, one: 3.0, wrap: true });
+        h += field(d.unsoDetail,   124.8, 29.0, 75.9, 8.2, { fs: 3.6, min: 2.0, one: 2.8, wrap: true });
+        const DF = { fs: 3.8, min: 2.4, center: true };
+        h += field(shipM,    26.8, 37.9, 10.8, 7.9, DF);
+        h += field(shipD,    40.6, 37.9, 10.8, 7.9, DF);
+        h += field(shipH,    54.4, 37.9, 10.7, 7.9, DF);
+        h += field(shipMin,  68.3, 37.9, 11.0, 7.9, DF);
+        h += field(shipNote, 105.8, 37.9, 34.0, 7.9, { fs: 3.4, min: 2.0, one: 2.6, wrap: true });
+        h += field(useM, 154.3, 37.9, 7.5, 7.9, { ...DF, fs: 3.6 });
+        h += field(useD, 163.0, 37.9, 7.3, 7.9, { ...DF, fs: 3.6 });
+        h += field(retM, 184.9, 37.9, 7.6, 7.9, { ...DF, fs: 3.6 });
+        h += field(retD, 193.7, 37.9, 7.1, 7.9, { ...DF, fs: 3.6 });
 
-  <!-- 担当者・連絡事項・検印 -->
-  <div style="display:flex;gap:5px;height:72px;">
-    <div style="width:32%;border:1px solid ${G};padding:3px;font-size:10px;overflow:hidden;">
-      <div style="font-weight:bold;color:${GD};margin-bottom:1px;">連絡事項</div>
-      <div style="font-size:11.5px;line-height:1.35;white-space:pre-wrap;">${esc(d.renraku)}</div>
-    </div>
-    <div style="width:51%;display:flex;flex-direction:column;gap:2px;">
-      <table>
-        <tr>
-          <td style="border:1px solid ${G};background:${BG};text-align:center;font-size:9px;padding:1px;width:14%;">受注営</td>
-          <td style="border:1px solid ${G};text-align:center;font-size:11px;padding:1px;width:19%;">${esc(d.juchunei)}</td>
-          <td style="border:1px solid ${G};background:${BG};text-align:center;font-size:9px;padding:1px;width:14%;">依頼営</td>
-          <td style="border:1px solid ${G};text-align:center;font-size:11px;padding:1px;width:19%;">${samaIfPerson(d.irainei)}</td>
-          <td style="border:1px solid ${G};background:${BG};text-align:center;font-size:8px;padding:1px;width:15%;">運送手配</td>
-          <td style="border:1px solid ${G};text-align:center;font-size:11px;padding:1px;width:19%;">${esc(d.unsote)}</td>
-        </tr>
-        <tr>
-          <td style="border:1px solid ${G};background:${BG};text-align:center;font-size:9px;padding:1px;">受注者</td>
-          <td style="border:1px solid ${G};text-align:center;font-size:10px;font-weight:bold;padding:1px;">${esc(d.juchusha)}</td>
-          <td style="border:1px solid ${G};background:${BG};text-align:center;font-size:8px;padding:1px;">担当者 様</td>
-          <td style="border:1px solid ${G};text-align:center;font-size:10px;font-weight:bold;padding:1px;">${esc(d.tantou)}</td>
-          <td style="border:1px solid ${G};background:${BG};text-align:center;font-size:8px;padding:1px;">運送請求</td>
-          <td style="border:1px solid ${G};text-align:center;font-size:11px;padding:1px;">${esc(d.unsoseikyuu)}</td>
-        </tr>
-      </table>
-      <table>
-        <tr>
-          <td style="border:1px solid ${G};background:${BG};text-align:center;font-size:9px;padding:1px;width:20%;">Wレンタル先</td>
-          <td style="border:1px solid ${G};font-size:9px;padding:1px;width:45%;">${esc(d.wrentaru)}</td>
-          <td style="border:1px solid ${G};background:${BG};text-align:center;font-size:9px;padding:1px;width:12%;">担当者</td>
-          <td style="border:1px solid ${G};font-size:9px;padding:1px;width:18%;">${esc(d.wrentaruTantou)}</td>
-          <td style="border:none;text-align:center;font-size:9px;padding:1px;width:5%;">様</td>
-        </tr>
-      </table>
-    </div>
-    <div style="width:16%;border:1px solid ${G};display:flex;">
-      <div style="flex:1;border-right:1px solid ${G};display:flex;flex-direction:column;">
-        <div style="height:16px;background:${BG};text-align:center;font-size:10px;line-height:16px;border-bottom:1px solid ${G};">検印</div>
-        <div style="flex:1;"></div>
-      </div>
-      <div style="flex:1;display:flex;flex-direction:column;">
-        <div style="height:16px;background:${BG};text-align:center;font-size:10px;line-height:16px;border-bottom:1px solid ${G};">検印</div>
-        <div style="flex:1;"></div>
-      </div>
-    </div>
-  </div>
+        // ── 明細（7行） ──
+        const TOP = 48.1, HEAD = 54.1, BOT = 110.2;
+        const RH = (BOT - HEAD) / KEIJO_ROWS;
+        h += rect(10.9, TOP, 201.0, BOT, 0.3);
+        h += hline(10.9, 201.0, HEAD, 0.22);
+        for (let r = 1; r < KEIJO_ROWS; r++) h += hline(10.9, 201.0, HEAD + RH * r);
+        [51.4, 125.0, 134.9, 144.9, 176.9].forEach(x => { h += vline(x, TOP, BOT); });
+        const HC = 51.1;
+        h += label('管理番号', 19.9, HC, 3.2, { w: 22.7, spread: true });
+        h += label('品目（メーカー・品名・規格）', 67.3, HC, 3.0, { w: 41.7, spread: true });
+        h += label('数量', 125.0, HC, 3.15, { w: 9.9 });
+        h += label('出営', 134.9, HC, 3.15, { w: 10.0 });
+        h += label('摘要', 153.1, HC, 3.2, { w: 16.0, spread: true });
+        h += label('伝票番号', 181.1, HC, 3.2, { w: 16.1, spread: true });
+        for (let r = 0; r < KEIJO_ROWS; r++) {
+            const it = items[pageIdx * KEIJO_ROWS + r] || {};
+            const y = HEAD + RH * r + 0.25, rh = RH - 0.5;
+            h += field(it.kanri,     11.2, y, 40.0, rh, { fs: 3.8, min: 2.0 });
+            h += field(it.hinmoku,   51.7, y, 73.0, rh, { fs: 3.6, min: 2.0, one: 2.6, wrap: true });
+            h += field(it.suryo,    125.2, y,  9.5, rh, { fs: 3.8, min: 2.2, center: true });
+            h += field(it.shutsuei, 135.1, y,  9.6, rh, { fs: 3.2, min: 1.8, one: 1.9, center: true, wrap: true });
+            h += field(it.tekiyo,   145.1, y, 31.6, rh, { fs: 3.2, min: 1.8, one: 2.4, wrap: true });
+            h += field(it.denpyo,   177.1, y, 23.7, rh, { fs: 3.4, min: 1.8 });
+        }
 
-  <div style="text-align:right;font-size:8px;margin-top:1px;color:#666;">${footer}</div>
-</div>`;
+        // ── 備考（書類は○で囲む） ──
+        h += rect(10.9, 112.3, 95.0, 142.4, 0.3);
+        h += label('備考', 12.1, 115.2, 3.4, { weight: 500 });
+        const BY = 115.1, BF = 2.0;
+        h += label('書類', 25.0, BY, BF);
+        h += ring(d.docHaigas, '排ガス', 33.0, BY, BF, 0.7, 0.6);
+        h += ring(d.docTokuji, '特自検', 41.0, BY, BF, 0.7, 0.6);
+        h += ring(d.docTeiki,  '定期検', 49.0, BY, BF, 0.7, 0.6);
+        h += ring(d.docShaken, '車検',   57.2, BY, BF, 0.7, 0.6);
+        h += label('その他(', 63.2, BY, BF);
+        h += label(')', 93.3, BY, BF);
+        h += field(d.docOther, 69.4, 113.2, 23.8, 3.9, { fs: 2.6, min: 1.6 });
+        h += field(biko, 11.5, 117.6, 82.9, 24.3, { fs: 3.3, min: 2.0, wrap: true, top: true });
+
+        // ── 受注営・依頼営・受注者・担当者 ──
+        h += rect(96.9, 112.3, 171.0, 126.8, 0.3);
+        h += hline(108.0, 133.8, 119.6);
+        h += hline(144.9, 171.0, 119.6);
+        h += label('受注営',  98.2, 116.0, 2.9);
+        h += label('依頼営', 134.9, 116.0, 2.9);
+        h += label('受注者',  98.2, 123.4, 2.9);
+        h += label('担当者', 134.9, 123.4, 2.9);
+        h += label('様', 167.5, 124.8, 2.6);
+        h += field(d.juchunei,               108.2, 114.5, 25.4, 4.9, { fs: 3.4, min: 2.0, center: true });
+        h += field(samaIfPerson(d.irainei),  145.1, 114.5, 25.7, 4.9, { fs: 3.4, min: 2.0, center: true });
+        h += field(d.juchusha,               108.2, 120.9, 25.4, 5.3, { fs: 3.4, min: 2.0, center: true });
+        h += field(d.tantou,                 145.1, 120.9, 22.1, 5.3, { fs: 3.4, min: 2.0, center: true });
+
+        // ── Wレンタル先 ──
+        h += rect(96.9, 127.8, 171.0, 142.4, 0.3);
+        h += hline(115.2, 171.0, 135.1);
+        h += label('Wレンタル先', 98.2, 131.6, 2.9);
+        h += label('担当者', 105.5, 139.0, 2.9);
+        h += label('様', 167.5, 140.4, 2.6);
+        h += field(d.wrentaru,       115.4, 129.0, 55.4, 5.8, { fs: 3.6, min: 2.0, center: true });
+        h += field(d.wrentaruTantou, 115.4, 136.4, 51.8, 5.6, { fs: 3.6, min: 2.0, center: true });
+
+        // ── 運送手配・運送請求・検印 ──
+        h += rect(173.0, 112.3, 201.0, 126.8, 0.2);
+        h += vline(187.0, 112.3, 126.8);
+        h += hline(173.0, 201.0, 119.5);
+        h += label('運送', 176.0, 114.1, 2.55, { w: 8.2, spread: true });
+        h += label('手配', 176.0, 117.4, 2.55, { w: 8.2, spread: true });
+        h += label('運送', 176.0, 121.5, 2.55, { w: 8.2, spread: true });
+        h += label('請求', 176.0, 124.8, 2.55, { w: 8.2, spread: true });
+        h += field(d.unsote,      187.2, 112.6, 13.6, 6.7, { fs: 3.2, min: 1.8, one: 2.4, center: true, wrap: true });
+        h += field(d.unsoseikyuu, 187.2, 119.8, 13.6, 6.7, { fs: 3.2, min: 1.8, one: 2.4, center: true, wrap: true });
+        h += rect(173.0, 127.8, 201.0, 142.4, 0.2);
+        h += vline(187.0, 127.8, 142.4);
+        h += label('検印', 173.0, 135.1, 2.85, { w: 14.0 });
+        h += label('検印', 187.0, 135.1, 2.85, { w: 14.0 });
+
+        // ── 様式番号・枚数 ──
+        h += label('営F－21　1', 155.8, 144.3, 2.2);   // 原本どおり「21」と「1」の間を空ける
+        if (pageCount > 1) {
+            h += `<div class="k-pageno" style="left:${mm(11.0)};top:${mm(143.3)}">${pageIdx + 1} / ${pageCount} 枚目</div>`;
+        }
+
+        return `<div class="keijo-page k-sheet">${h}</div>`;
     };
 
     let pagesHtml = '';
     for (let p = 0; p < pageCount; p++) pagesHtml += onePage(p);
 
     return `<style>
-.keijo-page, .keijo-page *{box-sizing:border-box;margin:0;padding:0;}
-.keijo-page table{border-collapse:collapse;width:100%;table-layout:fixed;}
+.keijo-page.k-sheet{position:relative;width:210mm;height:148mm;background:#fff;overflow:hidden;color:#1a9a6c;font-family:${KEIJO_FONT};-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.k-sheet,.k-sheet *{box-sizing:border-box;margin:0;}
 .keijo-page + .keijo-page{margin-top:10px;}
+.k-sheet .k-ln{position:absolute;background:#1a9a6c;}
+.k-sheet .k-bx{position:absolute;border-style:solid;border-color:#1a9a6c;}
+.k-sheet .k-lb{position:absolute;white-space:nowrap;line-height:1;color:#1a9a6c;}
+.k-sheet .k-sp{display:flex;justify-content:space-between;}
+.k-sheet .k-ct{text-align:center;}
+.k-sheet .k-logo{position:absolute;}
+.k-sheet .k-pageno{position:absolute;font-size:2.1mm;line-height:1;color:#555;white-space:nowrap;}
+.k-sheet .k-fld{position:absolute;color:#111;font-weight:500;line-height:1.2;padding:0 0.5mm;overflow:hidden;}
+.k-sheet .k-fld.k-c{text-align:center;}
+.k-sheet .k-fld.k-wrap{white-space:pre-wrap;overflow-wrap:break-word;}
+.k-sheet .k-fld.k-one{display:flex;align-items:center;white-space:pre;overflow:visible;}
+.k-sheet .k-fld.k-one.k-c{justify-content:center;}
+.k-sheet .k-tg{position:absolute;line-height:1;white-space:nowrap;}
+.k-sheet .k-tg .k-ring{position:absolute;display:none;border:0.3mm solid #111;border-radius:50%;}
+.k-sheet .k-tg.k-on .k-ring{display:block;}
+.k-sheet .k-tg.k-ck{border:0.25mm solid #1a9a6c;}
+.k-sheet .k-tg.k-ck .k-mark{position:absolute;display:none;left:1.25mm;top:-0.9mm;width:1.9mm;height:3.9mm;border:solid #111;border-width:0 0.65mm 0.65mm 0;transform:rotate(40deg);}
+.k-sheet .k-tg.k-ck.k-on .k-mark{display:block;}
 </style>
 <div class="keijo-pages">${pagesHtml}</div>`;
+}
+
+// ─── 記入欄に文字が収まるよう文字サイズを自動で縮める（受注票MK2と同じ方式） ───
+// 帳票を画面に差し込んだ後に呼ぶ。プレビュー・PDFの両方で使う。
+const KEIJO_MM = 96 / 25.4;
+let keijoMirror = null;
+function keijoMeasure(text, fs, wrap, widthMm) {
+    if (!keijoMirror) {
+        const host = document.createElement('div');
+        host.style.cssText = 'position:absolute;left:-10000px;top:0;visibility:hidden;';
+        keijoMirror = document.createElement('div');
+        keijoMirror.style.cssText = `font-family:${KEIJO_FONT};font-weight:500;line-height:1.2;padding:0;overflow-wrap:break-word;box-sizing:content-box;`;
+        host.appendChild(keijoMirror);
+        document.body.appendChild(host);
+    }
+    const m = keijoMirror;
+    m.style.fontSize = fs + 'mm';
+    if (wrap) {
+        m.style.display = 'block';
+        m.style.whiteSpace = 'pre-wrap';
+        m.style.width = widthMm + 'mm';
+        m.textContent = (text || '') + '​';   // 末尾の改行も1行として数える
+    } else {
+        m.style.display = 'inline-block';
+        m.style.whiteSpace = 'pre';
+        m.style.width = 'auto';
+        m.textContent = text || '';
+    }
+    return { w: m.offsetWidth / KEIJO_MM, h: m.offsetHeight / KEIJO_MM };
+}
+
+function fitKeijo(root) {
+    root.querySelectorAll('.k-fld').forEach(f => {
+        const base = +f.dataset.fs, min = +f.dataset.min;
+        const wrap = f.classList.contains('k-wrap');
+        const innerW = +f.dataset.w - 1.0;     // 左右の余白 0.5mm ずつ
+        const h = +f.dataset.h;
+        const text = f.textContent;
+        // 折り返し欄でも one（1行で収める下限）までは1行のまま縮め、少しはみ出すだけで2行に割れるのを防ぐ
+        const one = wrap ? +f.dataset.one : Infinity;
+        const fitsOneLine = (s) => !/\n/.test(text) && keijoMeasure(text, s, false).w <= innerW - 0.3;
+        let fs = base;
+        if (text) {
+            while (fs > min) {
+                if (fitsOneLine(fs)) break;
+                if (wrap && fs <= one && keijoMeasure(text, fs, true, innerW).h <= h - 0.2) break;
+                fs = Math.max(min, Math.round((fs - 0.1) * 100) / 100);
+            }
+        }
+        f.style.fontSize = fs + 'mm';
+        if (wrap && !f.classList.contains('k-top')) {
+            // 折り返し欄は文字の高さに合わせて上下中央に置く
+            const m = keijoMeasure(text || 'あ', fs, true, innerW);
+            f.style.paddingTop = Math.max(0, (h - m.h) / 2).toFixed(2) + 'mm';
+        }
+    });
 }
 
 // ═══════════════════════════════════════
@@ -1701,6 +1827,7 @@ function showPreview() {
     frame.innerHTML = buildKeijoHTML(data);
 
     document.getElementById('preview-modal').classList.add('show');
+    fitKeijo(frame);   // 記入欄に収まるよう文字サイズを自動調整
     document.body.style.overflow = 'hidden';
 
     // 画面幅に合わせて帳票(210mm≒794px)を縮小表示
@@ -1889,6 +2016,7 @@ async function sendAsPdf() {
     wrap.style.cssText = 'position:absolute;left:0;top:0;width:210mm;background:#ffffff;z-index:2147483647;pointer-events:none;';
     wrap.innerHTML = buildKeijoHTML(data);
     document.body.appendChild(wrap);
+    fitKeijo(wrap);   // 記入欄に収まるよう文字サイズを自動調整
 
     const pageEls = wrap.querySelectorAll('.keijo-page');
 
