@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>受注票 スマホ版</title>
     <link rel="manifest" href="manifest.json">
@@ -636,7 +637,8 @@
         .divider { height: 1px; background: var(--border); margin: 10px 0; }
 
         /* ─── 2カラム ─── */
-        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+        .two-col input[type="date"] { min-width: 0; }
 
         /* ─── 設定パネル（メールアドレス保存） ─── */
     </style>
@@ -2560,11 +2562,11 @@ function snapshotForm() {
 
 // 受付日時と記憶済みの担当者情報だけなら「入力なし」とみなす
 function snapHasContent(s) {
-    if (!s) return false;
+    if (!isValidSnap(s)) return false;
     if (s.type.irai || s.type.idou) return true;
     const ignore = id => /^rcv-/.test(id) || TANTOU_FIELDS.includes(id);
     if (Object.entries(s.values).some(([id, val]) => !ignore(id) && String(val).trim())) return true;
-    if (Object.values(s.checks).some(Boolean)) return true;
+    if (Object.values(s.checks || {}).some(Boolean)) return true;
     if (s.unso) return true;
     if (s.meisai.some(r => MEISAI_KEYS.some(k => String(r[k] || '').trim()))) return true;
     return (s.via || []).some(Boolean);
@@ -2617,7 +2619,7 @@ function restoreForm(s, mode) {
             const el = document.getElementById(id);
             if (el && !/^m\d+-/.test(id)) el.value = val;
         });
-        Object.entries(s.checks).forEach(([id, on]) => {
+        Object.entries(s.checks || {}).forEach(([id, on]) => {
             const el = document.getElementById(id);
             if (el && el.type === 'checkbox' && id !== 'tantou-remember') el.checked = !!on;
         });
@@ -2713,7 +2715,7 @@ function fmtStamp(t) {
 function resumeDraft() {
     const d = lsRead(DRAFT_KEY, null);
     document.getElementById('draft-banner').hidden = true;
-    if (!d || !d.snap) return;
+    if (!d || !isValidSnap(d.snap)) return;
     restoreForm(d.snap, 'exact');
     setEditing(d.editingFrom || null);
     showToast('📝 入力途中の内容を復元しました');
@@ -2725,9 +2727,14 @@ function discardDraft() {
 }
 
 // ─── 送信履歴 ───
+// 形の崩れた保存データ（古い版・手での書き換え等）は読み飛ばす
+function isValidSnap(s) {
+    return !!(s && typeof s === 'object' && s.type && typeof s.type === 'object'
+        && s.values && typeof s.values === 'object' && Array.isArray(s.meisai));
+}
 function loadHistory() {
     const h = lsRead(HIST_KEY, []);
-    return Array.isArray(h) ? h : [];
+    return Array.isArray(h) ? h.filter(ent => ent && ent.id && isValidSnap(ent.snap)) : [];
 }
 function saveHistoryList(h) {
     h = h.slice(0, HIST_MAX);
@@ -2871,13 +2878,17 @@ function cancelEditing() {
 
 // ─── 起動時：前回の入力途中があれば案内する ───
 (function initDraftAndHistory() {
+  try {
     updateHistCount();
     const d = lsRead(DRAFT_KEY, null);
-    if (d && d.snap && snapHasContent(d.snap)) {
+    if (d && snapHasContent(d.snap)) {
         document.getElementById('draft-banner-time').textContent = `${fmtStamp(d.savedAt)} に自動保存` +
             (d.editingFrom ? '（訂正中）' : '');
         document.getElementById('draft-banner').hidden = false;
     }
+  } catch (e) {
+    console.warn('下書き・履歴の読み込みに失敗しました', e);
+  }
 })();
 
 // ═══════════════════════════════════════
