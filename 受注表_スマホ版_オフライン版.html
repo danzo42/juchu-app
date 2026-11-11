@@ -2627,7 +2627,8 @@ function restoreForm(s, mode) {
             const r = [...document.querySelectorAll('input[name="unso"]')].find(x => x.value === s.unso);
             if (r) r.checked = true;
         }
-        (s.meisai.length ? s.meisai : [{}]).forEach((row, i) => {
+        // コピーして新規のときは品目も入れ直してもらうため、明細は空の1行にする
+        (mode === 'copy' || !s.meisai.length ? [{}] : s.meisai).forEach((row, i) => {
             if (i > 0) addMeisai();
             const n = meisaiCount;
             MEISAI_KEYS.forEach(k => {
@@ -2642,7 +2643,7 @@ function restoreForm(s, mode) {
         });
 
         if (mode === 'copy') {
-            // 同じ客先・現場の追加注文用：日付・時間帯・伝票番号は新しい受注のものを入れ直してもらう
+            // 同じ客先・現場の追加注文用：日付・時間帯は新しい受注のものを入れ直してもらう
             ['ship-date', 'ship-hour', 'ship-min', 'use-start', 'use-end', 'field-henkyaku',
              'idou-load-date', 'idou-load-hour', 'idou-load-min', 'idou-arr-date', 'idou-arr-hour', 'idou-arr-min']
                 .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -2650,7 +2651,6 @@ function restoreForm(s, mode) {
                 .forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
             document.querySelectorAll('input[type="checkbox"][id^="idou-load-"], input[type="checkbox"][id^="idou-arr-"]')
                 .forEach(el => { el.checked = false; });
-            document.querySelectorAll('[id$="-denpyo"]').forEach(el => { el.value = ''; });
             fillCurrentDateTime();
         } else {
             updateHeaderDateTime();
@@ -2846,7 +2846,7 @@ document.getElementById('hist-list').addEventListener('click', e => {
         restoreForm(ent.snap, 'copy');
         setEditing(null);
         closeHistory();
-        showToast('📄 前回の内容をコピーしました。日付を入れてください');
+        showToast('📄 前回の内容をコピーしました。日付と品目を入れてください');
     } else {
         restoreForm(ent.snap, 'exact');
         setEditing(ent.id);
