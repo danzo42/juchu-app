@@ -449,6 +449,23 @@
             display: none; align-items: flex-end; justify-content: center;
         }
         .hist-overlay.show { display: flex; }
+        /* 品目なしで送るときの確認（画面中央に出す） */
+        .hist-overlay.center { align-items: center; padding: 16px; }
+        .noitem-box {
+            width: 100%; max-width: 420px; background: #fff; border-radius: 14px;
+            padding: 20px 18px 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+        }
+        .noitem-title { font-size: 18px; font-weight: bold; color: #b45309; margin-bottom: 8px; }
+        .noitem-text { font-size: 15px; line-height: 1.6; color: #333; margin-bottom: 16px; }
+        .noitem-actions { display: flex; flex-direction: column; gap: 10px; }
+        .noitem-actions button {
+            width: 100%; padding: 14px; border-radius: 10px; border: none; font-size: 16px;
+            font-weight: bold; font-family: inherit; cursor: pointer;
+        }
+        .noitem-back { background: var(--green); color: #fff; }
+        .noitem-back:active { background: #15803d; }
+        .noitem-go { background: #e5e7eb; color: #374151; }
+        .noitem-go:active { background: #d1d5db; }
         .hist-sheet {
             width: 100%; max-width: 640px; max-height: 88vh; background: #f9fafb;
             border-radius: 16px 16px 0 0; display: flex; flex-direction: column; overflow: hidden;
@@ -1073,6 +1090,18 @@
             <span class="preview-close" onclick="closeTelChooser()">✕</span>
         </div>
         <div class="hist-list" id="tel-list"></div>
+    </div>
+</div>
+
+<!-- 品目が入っていないまま送ろうとしたときの確認 -->
+<div class="hist-overlay center" id="noitem-modal" role="dialog" aria-modal="true" aria-labelledby="noitem-title">
+    <div class="noitem-box">
+        <div class="noitem-title" id="noitem-title">⚠️ 品目が入っていません</div>
+        <div class="noitem-text">品目が1つも入力されていません。<br>このまま送信しますか？</div>
+        <div class="noitem-actions">
+            <button type="button" class="noitem-back" onclick="backToItems()">✏️ 戻って品目を入れる</button>
+            <button type="button" class="noitem-go" onclick="sendWithoutItems()">このまま送信する</button>
+        </div>
     </div>
 </div>
 
@@ -2066,10 +2095,45 @@ function getPvZoom() {
     return pvZoom;
 }
 
+// 品目（品名か管理番号）が1行でも入っているか
+function hasAnyItem() {
+    return [...document.querySelectorAll('#meisai-container .meisai-item')].some(item => {
+        const n = item.id.replace('meisai-', '');
+        return v(`m${n}-hinmoku`) || v(`m${n}-kanri`);
+    });
+}
+
 async function sendFromPreview() {
+    // 品目の入れ忘れ（特に「コピーして新規」の後）に気付けるよう、送る前に確認する。
+    // ※ 標準の確認ダイアログを使うと、押すのに時間がかかったとき共有画面を開けないことがあるため、画面内のボタンで確認する
+    if (!hasAnyItem()) {
+        document.getElementById('noitem-modal').classList.add('show');
+        return;
+    }
     closePreview();                 // 共有シートと競合しないよう先に閉じる
     await sendAsPdf();
 }
+function closeNoItem() {
+    document.getElementById('noitem-modal').classList.remove('show');
+}
+function backToItems() {
+    closeNoItem();
+    closePreview();
+    const first = document.querySelector('#meisai-container .meisai-item');
+    if (first) {
+        first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const el = first.querySelector('[id$="-hinmoku"]');
+        if (el) el.focus({ preventScroll: true });
+    }
+}
+async function sendWithoutItems() {
+    closeNoItem();
+    closePreview();
+    await sendAsPdf();
+}
+document.getElementById('noitem-modal').addEventListener('click', e => {
+    if (e.target.id === 'noitem-modal') closeNoItem();   // 背景を押したら閉じる（プレビューに戻る）
+});
 
 // ═══════════════════════════════════════
 //  PDF生成 → メール送信（Web Share / mailto）
